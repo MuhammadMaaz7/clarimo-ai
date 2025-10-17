@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===============================
+   Design System: Colors & Styles
+   =============================== */
+
+@layer base {
+  :root {
+    --background: 240 10% 6%;
+    --foreground: 240 10% 96%;
+
+    --card: 240 10% 12%;
+    --card-foreground: 240 10% 96%;
+
+    --popover: 240 10% 12%;
+    --popover-foreground: 240 10% 96%;
+
+    --primary: 252 95% 70%;
+    --primary-foreground: 0 0% 100%;
+    
+    --primary-start: 252 95% 70%;
+    --primary-end: 262 85% 68%;
+
+    --secondary: 240 10% 12%;
+    --secondary-foreground: 240 10% 96%;
+
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 285 100% 70%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 145 63% 52%;
+
+    --border: 240 10% 20%;
+    --input: 240 10% 14%;
+    --ring: 252 95% 70%;
+
+    --radius: 0.75rem;
+    
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 240 10% 90%;
+    --sidebar-primary: 252 95% 70%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 10% 12%;
+    --sidebar-accent-foreground: 240 10% 90%;
+    --sidebar-border: 240 10% 20%;
+    --sidebar-ring: 252 95% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-[hsl(var(--card)/0.4)] backdrop-blur-xl border border-[hsl(var(--border)/0.5)];
+  }
+  
+  .glass-hover {
+    @apply hover:bg-[hsl(var(--card)/0.6)] transition-all duration-300;
+  }
+  
+  .glow {
+    @apply shadow-[0_0_40px_-10px_hsl(var(--primary)_/_0.3)];
+  }
+  
+  .glow-sm {
+    @apply shadow-[0_0_20px_-5px_hsl(var(--primary)_/_0.2)];
+  }
+  
+  .glow-accent {
+    @apply shadow-[0_0_30px_-8px_hsl(var(--accent)_/_0.4)];
+  }
+  
+  .gradient-primary {
+    @apply bg-gradient-to-r from-[hsl(var(--primary-start))] to-[hsl(var(--primary-end))];
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-[hsl(var(--primary-start))] to-[hsl(var(--accent))] bg-clip-text text-transparent;
+  }
+
+  /* Responsive Container System */
+  .responsive-container {
+    @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+    @apply w-full mx-auto;
+    @apply max-w-full sm:max-w-full md:max-w-full lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px];
+  }
+  
+  .responsive-container-dashboard {
+    @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+    @apply w-full mx-auto;
+    @apply max-w-full sm:max-w-full md:max-w-full lg:max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px];
+  }
+  
+  .responsive-container-form {
+    @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+    @apply w-full mx-auto;
+    @apply max-w-full sm:max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl;
+  }
+  
+  .responsive-container-content {
+    @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+    @apply w-full mx-auto;
+    @apply max-w-full sm:max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl;
+  }
+
+  /* Responsive Grid System */
+  .responsive-grid {
+    @apply grid gap-4 sm:gap-6 lg:gap-8;
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5;
+  }
+  
+  .responsive-grid-cards {
+    @apply grid gap-4 sm:gap-6 lg:gap-8;
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5;
+  }
+  
+  .responsive-grid-2col {
+    @apply grid gap-4 sm:gap-6 lg:gap-8;
+    @apply grid-cols-1 md:grid-cols-2;
+  }
+
+  /* Responsive Typography */
+  .responsive-heading-xl {
+    @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl;
+  }
+  
+  .responsive-heading-lg {
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl;
+  }
+  
+  .responsive-heading-md {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+  }
+  
+  .responsive-text {
+    @apply text-sm sm:text-base md:text-lg;
+  }
+
+  /* Responsive Spacing */
+  .responsive-spacing-sm {
+    @apply space-y-4 sm:space-y-6 lg:space-y-8;
+  }
+  
+  .responsive-spacing-md {
+    @apply space-y-6 sm:space-y-8 lg:space-y-12;
+  }
+  
+  .responsive-spacing-lg {
+    @apply space-y-8 sm:space-y-12 lg:space-y-16;
+  }
+}
