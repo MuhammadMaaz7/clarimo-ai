@@ -10,7 +10,6 @@ lerna-debug.log*
 dist/
 build/
 
-
 # Frontend Build
 Frontend/dist/
 Frontend/build/
@@ -179,3 +178,6 @@ dmypy.json
 
 # Local development
 .local/
+
+# Temporary data storage
+Backend/data/

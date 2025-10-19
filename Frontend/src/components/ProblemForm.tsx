@@ -1,14 +1,8 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Search, Filter } from 'lucide-react';
 
@@ -19,28 +13,51 @@ interface ProblemFormProps {
 
 export interface FormData {
   problemDescription: string;
-  industry?: string;
+  domain?: string;
   region?: string;
   targetAudience?: string;
-  budget?: string;
 }
 
 const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
   const [formData, setFormData] = useState<FormData>({
     problemDescription: '',
-    industry: '',
+    domain: '',
     region: '',
     targetAudience: '',
-    budget: '',
   });
+
+  // Validation functions
+  const validateText = (text: string): string => {
+    // Remove special characters and code-like patterns, keep only letters, numbers, spaces, and basic punctuation
+    return text.replaceAll(/[<>{}[\]\\`~|@#$%^&*()+=]/g, '');
+  };
+
+  const validateTextForSubmit = (text: string): string => {
+    // Same as validateText but also trims for final submission
+    return validateText(text).trim();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Validate and clean the form data
+    const cleanedData: FormData = {
+      problemDescription: validateTextForSubmit(formData.problemDescription),
+      domain: formData.domain ? validateTextForSubmit(formData.domain) : undefined,
+      region: formData.region ? validateTextForSubmit(formData.region) : undefined,
+      targetAudience: formData.targetAudience ? validateTextForSubmit(formData.targetAudience) : undefined,
+    };
+
+    // Only submit if problem description is not empty after cleaning
+    if (cleanedData.problemDescription) {
+      onSubmit(cleanedData);
+    }
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clean the input as user types (but preserve spaces)
+    const cleanedValue = validateText(value);
+    setFormData((prev) => ({ ...prev, [field]: cleanedValue }));
   };
 
   return (
@@ -67,95 +84,57 @@ const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
             />
           </div>
 
-          {/* Optional Filters */}
+          {/* Optional Context Fields */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Filters</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Context</h3>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Industry */}
+            <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-3">
+              {/* Domain */}
               <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <Select
-                  value={formData.industry}
-                  onValueChange={(value) => handleChange('industry', value)}
-                >
-                  <SelectTrigger id="industry" className="glass border-border/50">
-                    <SelectValue placeholder="Select industry" />
-                  </SelectTrigger>
-                  <SelectContent className="glass">
-                    <SelectItem value="all">All Industries</SelectItem>
-                    <SelectItem value="saas">SaaS</SelectItem>
-                    <SelectItem value="ecommerce">E-commerce</SelectItem>
-                    <SelectItem value="fintech">Fintech</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Region */}
-              <div className="space-y-2">
-                <Label htmlFor="region">Region</Label>
-                <Select
-                  value={formData.region}
-                  onValueChange={(value) => handleChange('region', value)}
-                >
-                  <SelectTrigger id="region" className="glass border-border/50">
-                    <SelectValue placeholder="Select region" />
-                  </SelectTrigger>
-                  <SelectContent className="glass">
-                    <SelectItem value="global">Global</SelectItem>
-                    <SelectItem value="north-america">North America</SelectItem>
-                    <SelectItem value="europe">Europe</SelectItem>
-                    <SelectItem value="asia">Asia</SelectItem>
-                    <SelectItem value="latam">Latin America</SelectItem>
-                    <SelectItem value="africa">Africa</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="domain">Domain (Optional)</Label>
+                <Input
+                  id="domain"
+                  type="text"
+                  value={formData.domain || ''}
+                  onChange={(e) => handleChange('domain', e.target.value)}
+                  placeholder="e.g., Healthcare, SaaS, E-commerce"
+                  className="glass border-border/50 focus:border-primary transition-all duration-300"
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground">Industry or domain context</p>
               </div>
 
               {/* Target Audience */}
               <div className="space-y-2">
-                <Label htmlFor="audience">Target Audience</Label>
-                <Select
-                  value={formData.targetAudience}
-                  onValueChange={(value) => handleChange('targetAudience', value)}
-                >
-                  <SelectTrigger id="audience" className="glass border-border/50">
-                    <SelectValue placeholder="Select audience" />
-                  </SelectTrigger>
-                  <SelectContent className="glass">
-                    <SelectItem value="all">All Audiences</SelectItem>
-                    <SelectItem value="b2b">B2B</SelectItem>
-                    <SelectItem value="b2c">B2C</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                    <SelectItem value="smb">Small/Medium Business</SelectItem>
-                    <SelectItem value="individual">Individual</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="audience">Target Audience (Optional)</Label>
+                <Input
+                  id="audience"
+                  type="text"
+                  value={formData.targetAudience || ''}
+                  onChange={(e) => handleChange('targetAudience', e.target.value)}
+                  placeholder="e.g., Small businesses, Students, Developers"
+                  className="glass border-border/50 focus:border-primary transition-all duration-300"
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground">Who faces these problems</p>
               </div>
 
-              {/* Budget */}
+              {/* Region */}
               <div className="space-y-2">
-                <Label htmlFor="budget">Startup Budget</Label>
-                <Select
-                  value={formData.budget}
-                  onValueChange={(value) => handleChange('budget', value)}
-                >
-                  <SelectTrigger id="budget" className="glass border-border/50">
-                    <SelectValue placeholder="Select budget" />
-                  </SelectTrigger>
-                  <SelectContent className="glass">
-                    <SelectItem value="all">Any Budget</SelectItem>
-                    <SelectItem value="low">Low (&lt; $10K)</SelectItem>
-                    <SelectItem value="medium">Medium ($10K - $50K)</SelectItem>
-                    <SelectItem value="high">High (&gt; $50K)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="region">Region (Optional)</Label>
+                <Input
+                  id="region"
+                  type="text"
+                  value={formData.region || ''}
+                  onChange={(e) => handleChange('region', e.target.value)}
+                  placeholder="e.g., North America, Europe, Global"
+                  className="glass border-border/50 focus:border-primary transition-all duration-300"
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground">Geographic context</p>
               </div>
             </div>
           </div>
@@ -164,12 +143,18 @@ const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
           <Button
             type="submit"
             size="lg"
-            className="w-full bg-gradient-to-r from-primary to-accent text-white glow hover:glow-sm hover:scale-[1.02] transition-all duration-300 font-semibold text-lg"
-            disabled={isLoading || !formData.problemDescription.trim()}
+            className="w-full bg-gradient-to-r from-accent to-primary text-white glow hover:glow-sm hover:scale-[1.02] transition-all duration-300 font-semibold text-lg shadow-lg"
+            disabled={isLoading || !formData.problemDescription.trim() || formData.problemDescription.trim().length < 10}
           >
             <Search className="mr-2 h-5 w-5" />
             {isLoading ? 'Discovering Problems...' : 'Discover Problems'}
           </Button>
+          
+          {formData.problemDescription.trim() && formData.problemDescription.trim().length < 10 && (
+            <p className="text-sm text-muted-foreground text-center">
+              Please provide at least 10 characters for the problem description
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

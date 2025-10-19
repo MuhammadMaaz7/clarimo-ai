@@ -62,20 +62,46 @@ const ProblemDiscovery = () => {
     setIsLoading(true);
     setHasSearched(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setProblems(mockProblems);
-      setIsLoading(false);
-    }, 2000);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:8000/problems/discover', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data),
+      });
 
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/discover-problems', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(data),
-    // });
-    // const result = await response.json();
-    // setProblems(result.problems);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data?.problems) {
+        // Transform the API response to match our Problem interface
+        const transformedProblems = result.data.problems.map((problem: any) => ({
+          id: problem.id,
+          title: problem.title,
+          description: problem.description,
+          subreddit: problem.source,
+          score: problem.score
+        }));
+        
+        setProblems(transformedProblems);
+      } else {
+        console.error('API response format error:', result);
+        // Fallback to mock data if API response is unexpected
+        setProblems(mockProblems);
+      }
+    } catch (error) {
+      console.error('Error calling problem discovery API:', error);
+      // Fallback to mock data on error
+      setProblems(mockProblems);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
