@@ -1,0 +1,465 @@
+"""
+Reddit Fetching Service - Integrates Reddit post extraction with user input workflow
+"""
+import os
+import re
+import json
+import time
+import random
+import asyncio
+from itertools import combinations
+from typing import List, Dict, Any, Optional, Set, Tuple
+from datetime import datetime, timezone
+from pathlib import Path
+import logging
+import uuid
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Try import praw (support dry-run if absent)
+try:
+    import praw
+    import prawcore
+    PRAW_AVAILABLE = True
+except ImportError:
+    praw = None
+    prawcore = None
+    PRAW_AVAILABLE = False
+    logger.warning("PRAW not installed - Reddit fetching will run in dry-run mode")
+
+class RedditFetchingService:
+    """Service for fetching Reddit posts based on generated keywords"""
+    
+    def __init__(self):
+        self.reddit = None
+        self._initialize_reddit()
+    
+    def _initialize_reddit(self):
+        """Initialize Reddit API connection"""
+        if not PRAW_AVAILABLE:
+            logger.warning("PRAW not available - running in dry-run mode")
+            return
+            
+        # Get Reddit credentials from environment
+        client_id = os.getenv("REDDIT_CLIENT_ID")
+        client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+        user_agent = os.getenv("REDDIT_USER_AGENT", "RedditFetcher/1.0")
+        
+        if client_id and client_secret:
+            try:
+                self.reddit = praw.Reddit(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    user_agent=user_agent,
+                    check_for_async=False
+                )
+                logger.info("Reddit API initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize Reddit API: {e}")
+                self.reddit = None
+        else:
+            logger.warning("Reddit credentials not found - running in dry-run mode")
+    
+    @staticmethod
+    def clean_subreddit_name(s: str) -> str:
+        """Clean subreddit name format"""
+        if not isinstance(s, str):
+            return ""
+        s2 = s.strip()
+        s2 = re.sub(r'^/r/', '', s2, flags=re.IGNORECASE)
+        s2 = re.sub(r'^r/', '', s2, flags=re.IGNORECASE)
+        s2 = s2.replace(" ", "")
+        return s2
+    
+    @staticmethod
+    def quote_if_needed(s: str) -> str:
+        """Quote search terms if they contain spaces or special characters"""
+        s = (s or "").strip()
+        s = s.replace('"', '\\"')
+        if " " in s or "-" in s or "." in s or "/" in s:
+            return f'"{s}"'
+        return s
+    
+    @staticmethod
+    def build_consistent_query(anchors: List[str], problems: List[str]) -> str:
+        """Build a lucene query: (anchor1 OR anchor2) AND (problem1 OR problem2)"""
+        if not anchors or not problems:
+            return ""
+
+        anchor_part = " OR ".join([RedditFetchingService.quote_if_needed(a) for a in anchors])
+        problem_part = " OR ".join([RedditFetchingService.quote_if_needed(p) for p in problems])
+
+        if len(anchors) > 1:
+            anchor_part = f"({anchor_part})"
+        if len(problems) > 1:
+            problem_part = f"({problem_part})"
+            
+        return f"{anchor_part} AND {problem_part}"
+    
+    def _parse_created_utc_from_praw(self, post) -> Optional[str]:
+        """Parse creation timestamp from Reddit post"""
+        try:
+            ts = getattr(post, "created_utc", None)
+            if ts:
+                dt = datetime.fromtimestamp(float(ts), tz=timezone.utc)
+                return dt.isoformat().replace("+00:00", "Z")
+        except Exception:
+            pass
+        return None
+    
+    def _post_to_dict_fast(self, post) -> Dict[str, Any]:
+        """Convert Reddit post to dictionary (optimized without comments)"""
+        pid = getattr(post, "id", None) or getattr(post, "name", None)
+        title = getattr(post, "title", "") or ""
+        selftext = getattr(post, "selftext", "") or ""
+        url = getattr(post, "url", "") or ""
+        subreddit_name = getattr(getattr(post, "subreddit", None), "display_name", None) or "unknown"
+        created = self._parse_created_utc_from_praw(post)
+        
+        return {
+            "id": pid,
+            "title": title,
+            "content": selftext,
+            "url": url,
+            "subreddit": subreddit_name,
+            "created_utc": created,
+            "score": getattr(post, "score", None),
+            "num_comments": getattr(post, "num_comments", None),
+            "upvote_ratio": getattr(post, "upvote_ratio", None),
+            "comments": []  # Empty for performance
+        }
+    
+    def _run_lucene_search(self, query: str, subreddit: str = "all", limit: int = 100, time_filter: str = "year") -> List[Any]:
+        """Run Reddit search with lucene query"""
+        if self.reddit is None:
+            logger.info(f"[DRY RUN] Would search: {query}")
+            return []
+        
+        try:
+            logger.info(f"[REDDIT SEARCH] Query: {query[:100]}...")
+            sr = self.reddit.subreddit(subreddit)
+            posts = list(sr.search(query=query, time_filter=time_filter, limit=limit, syntax='lucene'))
+            logger.info(f"Found {len(posts)} posts")
+            return posts
+        except Exception as e:
+            logger.error(f"Search failed for query: {e}")
+            return []
+    
+    def _collect_posts_for_query(self, query: str, subreddit: str = "all", per_query_limit: int = 100, time_filter: str = "year") -> List[Dict[str, Any]]:
+        """Collect posts for a single query"""
+        posts_objs = self._run_lucene_search(query, subreddit=subreddit, limit=per_query_limit, time_filter=time_filter)
+        results = []
+        seen = set()
+        
+        for p in posts_objs:
+            pid = getattr(p, "id", None)
+            if not pid or pid in seen:
+                continue
+            seen.add(pid)
+            
+            try:
+                d = self._post_to_dict_fast(p)
+                results.append(d)
+            except Exception as e:
+                logger.warning(f"Error converting post {pid}: {e}")
+            
+            if len(results) >= per_query_limit:
+                break
+                
+        return results
+    
+    def _generate_search_queries(self, keywords_data: Dict[str, Any], queries_per_domain: int = 8) -> List[Tuple[List[str], List[str], str]]:
+        """Generate search queries from keywords data"""
+        anchors = keywords_data.get("domain_anchors", [])
+        problems = keywords_data.get("problem_phrases", [])
+        
+        if len(anchors) < 2 or len(problems) < 2:
+            logger.warning(f"Need at least 2 anchors and 2 problems. Got {len(anchors)} anchors, {len(problems)} problems")
+            return []
+        
+        # Shuffle to avoid bias
+        random.shuffle(anchors)
+        random.shuffle(problems)
+        
+        # Generate query combinations
+        queries = []
+        for _ in range(queries_per_domain):
+            # Vary anchor and problem counts
+            anchor_count = random.choice([2, 2, 3])  # Mostly 2, sometimes 3
+            problem_count = random.choice([2, 3, 3])  # Prefer 3, sometimes 2
+            
+            anchor_count = min(anchor_count, len(anchors))
+            problem_count = min(problem_count, len(problems))
+            
+            selected_anchors = random.sample(anchors, anchor_count)
+            selected_problems = random.sample(problems, problem_count)
+            
+            query = self.build_consistent_query(selected_anchors, selected_problems)
+            if query and len(query) < 700:  # Keep reasonable length
+                queries.append((selected_anchors, selected_problems, query))
+        
+        # Remove duplicates
+        seen_queries = set()
+        unique_queries = []
+        for anchors_combo, problems_combo, query in queries:
+            if query not in seen_queries:
+                seen_queries.add(query)
+                unique_queries.append((anchors_combo, problems_combo, query))
+        
+        return unique_queries[:queries_per_domain]
+    
+    def _check_subreddit_fast(self, name: str) -> Dict[str, Any]:
+        """Fast subreddit existence check"""
+        res = {
+            "name": name,
+            "exists": False,
+            "accessible": False,
+            "subscribers": 0,
+            "note": ""
+        }
+        
+        if self.reddit is None:
+            res["note"] = "dry-run: reddit not configured"
+            return res
+        
+        try:
+            sr = self.reddit.subreddit(name)
+            try:
+                res["subscribers"] = getattr(sr, "subscribers", 0) or 0
+                res["exists"] = True
+                # Quick access test
+                _ = next(sr.new(limit=1), None)
+                res["accessible"] = True
+            except (prawcore.exceptions.Forbidden, prawcore.exceptions.NotFound):
+                res["accessible"] = False
+                res["note"] = "Private or not found"
+            except Exception as e:
+                res["accessible"] = False
+                res["note"] = f"Access test error: {e}"
+        except Exception as e:
+            res["note"] = f"Check failed: {e}"
+        
+        return res
+    
+    def _fetch_subreddit_posts(self, subreddit_name: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetch posts from a specific subreddit"""
+        if self.reddit is None:
+            return []
+        
+        try:
+            sr = self.reddit.subreddit(subreddit_name)
+            candidates = []
+            seen = set()
+            
+            # Fetch from multiple sources
+            sources = [
+                ("hot", sr.hot(limit=limit//3)),
+                ("top", sr.top(limit=limit//3, time_filter="year")),
+                ("new", sr.new(limit=limit//3))
+            ]
+            
+            for source_name, iterator in sources:
+                try:
+                    for submission in iterator:
+                        pid = getattr(submission, "id", None)
+                        if pid and pid not in seen:
+                            seen.add(pid)
+                            candidates.append(submission)
+                except Exception as e:
+                    logger.warning(f"Failed to fetch {source_name} posts from r/{subreddit_name}: {e}")
+            
+            # Convert to dict and score by engagement
+            scored_posts = []
+            for submission in candidates:
+                try:
+                    score = getattr(submission, "score", 0) or 0
+                    num_comments = getattr(submission, "num_comments", 0) or 0
+                    
+                    # Skip very low engagement posts
+                    if score < 1 and num_comments == 0:
+                        continue
+                    
+                    engagement = float(score) + 2.0 * float(num_comments)
+                    post_dict = self._post_to_dict_fast(submission)
+                    scored_posts.append((engagement, post_dict))
+                except Exception as e:
+                    continue
+            
+            # Return top posts by engagement
+            scored_posts.sort(key=lambda x: x[0], reverse=True)
+            return [p for _, p in scored_posts[:limit]]
+            
+        except Exception as e:
+            logger.error(f"Error fetching posts from r/{subreddit_name}: {e}")
+            return []
+    
+    async def fetch_reddit_posts_for_keywords(
+        self, 
+        user_id: str, 
+        input_id: str, 
+        keywords_data: Dict[str, Any],
+        queries_per_domain: int = 8,
+        per_query_limit: int = 100,
+        per_subreddit_limit: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Main method to fetch Reddit posts based on generated keywords
+        
+        Args:
+            user_id: User ID
+            input_id: Input ID
+            keywords_data: Generated keywords data
+            queries_per_domain: Number of search queries to generate
+            per_query_limit: Posts per search query
+            per_subreddit_limit: Posts per subreddit
+            
+        Returns:
+            Dictionary with fetched posts and metadata
+        """
+        try:
+            logger.info(f"Starting Reddit fetch for input {input_id} (user: {user_id})")
+            
+            result = {
+                "user_id": user_id,
+                "input_id": input_id,
+                "fetch_id": str(uuid.uuid4()),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "by_query": [],
+                "by_subreddit": [],
+                "total_posts": 0,
+                "status": "completed"
+            }
+            
+            global_seen_ids = set()
+            
+            # 1. Search-based extraction
+            logger.info("Generating search queries from keywords...")
+            queries = self._generate_search_queries(keywords_data, queries_per_domain)
+            
+            for anchor_combo, problem_combo, query in queries:
+                logger.info(f"Executing query: {query[:100]}...")
+                posts = self._collect_posts_for_query(
+                    query, 
+                    per_query_limit=per_query_limit,
+                    time_filter="year"
+                )
+                
+                # Deduplicate posts
+                unique_posts = []
+                for post in posts:
+                    pid = post.get("id")
+                    if pid and pid not in global_seen_ids:
+                        global_seen_ids.add(pid)
+                        unique_posts.append(post)
+                
+                result["by_query"].append({
+                    "query": query,
+                    "domain_anchors_used": anchor_combo,
+                    "problem_phrases_used": problem_combo,
+                    "posts": unique_posts,
+                    "n_posts": len(unique_posts)
+                })
+                
+                # Rate limiting
+                time.sleep(0.5)
+            
+            # 2. Subreddit-based extraction
+            logger.info("Fetching from potential subreddits...")
+            potential_subreddits = keywords_data.get("potential_subreddits", [])
+            
+            for subreddit_raw in potential_subreddits:
+                subreddit_name = self.clean_subreddit_name(subreddit_raw)
+                if not subreddit_name:
+                    continue
+                
+                logger.info(f"Checking r/{subreddit_name}...")
+                meta = self._check_subreddit_fast(subreddit_name)
+                
+                subreddit_entry = {
+                    "subreddit": subreddit_name,
+                    "meta": meta,
+                    "posts": [],
+                    "extracted_count": 0
+                }
+                
+                if meta.get("exists") and meta.get("accessible"):
+                    posts = self._fetch_subreddit_posts(subreddit_name, per_subreddit_limit)
+                    
+                    # Deduplicate posts
+                    unique_posts = []
+                    for post in posts:
+                        pid = post.get("id")
+                        if pid and pid not in global_seen_ids:
+                            global_seen_ids.add(pid)
+                            unique_posts.append(post)
+                    
+                    subreddit_entry["posts"] = unique_posts
+                    subreddit_entry["extracted_count"] = len(unique_posts)
+                    logger.info(f"Extracted {len(unique_posts)} unique posts from r/{subreddit_name}")
+                else:
+                    logger.info(f"Skipping r/{subreddit_name} - {meta.get('note', 'not accessible')}")
+                
+                result["by_subreddit"].append(subreddit_entry)
+                time.sleep(0.2)  # Rate limiting
+            
+            # Calculate totals
+            query_total = sum(q["n_posts"] for q in result["by_query"])
+            subreddit_total = sum(s["extracted_count"] for s in result["by_subreddit"])
+            result["total_posts"] = query_total + subreddit_total
+            
+            logger.info(f"Reddit fetch completed: {query_total} from queries, {subreddit_total} from subreddits, {result['total_posts']} total")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error during Reddit fetch for input {input_id}: {str(e)}")
+            return {
+                "user_id": user_id,
+                "input_id": input_id,
+                "fetch_id": str(uuid.uuid4()),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "by_query": [],
+                "by_subreddit": [],
+                "total_posts": 0,
+                "status": "failed",
+                "error": str(e)
+            }
+    
+    async def save_reddit_data_to_file(self, reddit_data: Dict[str, Any], user_id: str, input_id: str) -> str:
+        """
+        Save Reddit data to JSON file
+        
+        Args:
+            reddit_data: Fetched Reddit data
+            user_id: User ID
+            input_id: Input ID
+            
+        Returns:
+            Path to saved file
+        """
+        try:
+            # Create directory structure: data/reddit_posts/user_id/
+            base_dir = Path("data/reddit_posts")
+            user_dir = base_dir / user_id
+            user_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"reddit_posts_{input_id}_{timestamp}.json"
+            file_path = user_dir / filename
+            
+            # Save data
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(reddit_data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"Saved Reddit data to {file_path}")
+            return str(file_path)
+            
+        except Exception as e:
+            logger.error(f"Error saving Reddit data to file: {str(e)}")
+            raise
+
+# Create global instance
+reddit_fetching_service = RedditFetchingService()

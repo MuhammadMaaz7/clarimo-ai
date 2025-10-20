@@ -172,8 +172,8 @@ class KeywordGenerationService:
         api_keys = cls._get_api_keys()
         
         if not api_keys:
-            logger.warning("No valid API keys found - using mock data")
-            return cls._generate_mock_keywords(domain_cleaned)
+            logger.error("No valid API keys found - cannot generate keywords")
+            return {"potential_subreddits": [], "domain_anchors": [], "problem_phrases": []}
 
         prompt = f"""
         You are an expert in social listening, user sentiment mining, and Reddit search optimization.
@@ -363,61 +363,6 @@ class KeywordGenerationService:
         return {"potential_subreddits": [], "domain_anchors": [], "problem_phrases": []}
     
     @classmethod
-    def _generate_mock_keywords(cls, domain: str) -> Dict[str, List[str]]:
-        """
-        Generate mock keywords for development/testing when API is not available
-        
-        Args:
-            domain: Domain to generate mock keywords for
-            
-        Returns:
-            Dictionary with mock keywords based on domain
-        """
-        domain_lower = domain.lower()
-        
-        # Base keywords that work for most domains
-        base_subreddits = ["r/startups", "r/entrepreneur", "r/smallbusiness"]
-        base_anchors = ["automation", "productivity", "efficiency", "workflow"]
-        base_phrases = ["too expensive", "hard to use", "time consuming", "manual work", "poor support"]
-        
-        # Domain-specific keywords
-        if any(word in domain_lower for word in ["ai", "artificial", "intelligence", "machine learning"]):
-            subreddits = ["r/MachineLearning", "r/artificial", "r/ChatGPT", "r/OpenAI"] + base_subreddits
-            anchors = ["AI tool", "machine learning", "neural network", "chatbot", "automation", "API", "LLM", "GPT"] + base_anchors
-            phrases = ["not accurate", "expensive API", "hard to train", "slow processing"] + base_phrases
-            
-        elif any(word in domain_lower for word in ["content", "writing", "blog", "marketing"]):
-            subreddits = ["r/content_marketing", "r/copywriting", "r/blogging", "r/marketing"] + base_subreddits
-            anchors = ["content creation", "SEO", "social media", "blog writing", "copywriting", "content calendar"] + base_anchors
-            phrases = ["writer's block", "no engagement", "poor SEO", "time intensive"] + base_phrases
-            
-        elif any(word in domain_lower for word in ["web", "app", "software", "development"]):
-            subreddits = ["r/webdev", "r/programming", "r/SaaS", "r/softwaredevelopment"] + base_subreddits
-            anchors = ["web development", "mobile app", "SaaS", "API", "database", "frontend", "backend"] + base_anchors
-            phrases = ["buggy software", "slow loading", "poor UX", "expensive hosting"] + base_phrases
-            
-        elif any(word in domain_lower for word in ["business", "management", "project"]):
-            subreddits = ["r/projectmanagement", "r/business", "r/productivity", "r/freelance"] + base_subreddits
-            anchors = ["project management", "team collaboration", "task tracking", "reporting", "CRM"] + base_anchors
-            phrases = ["missed deadlines", "poor communication", "no visibility", "manual tracking"] + base_phrases
-            
-        else:
-            # Generic keywords for unknown domains
-            subreddits = base_subreddits + ["r/productivity", "r/technology"]
-            anchors = base_anchors + ["software", "platform", "solution", "service"]
-            phrases = base_phrases + ["not scalable", "limited features"]
-        
-        # Limit the number of items to match expected ranges
-        result = {
-            "potential_subreddits": subreddits[:5],  # 2-5 items
-            "domain_anchors": anchors[:12],  # 8-15 items  
-            "problem_phrases": phrases[:15]  # 10-20 items
-        }
-        
-        logger.info(f"Generated mock keywords for '{domain}': {len(result['potential_subreddits'])} subreddits, {len(result['domain_anchors'])} anchors, {len(result['problem_phrases'])} phrases")
-        return result
-    
-    @classmethod
     async def get_keywords_by_input_id(cls, user_id: str, input_id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieve generated keywords for a specific user input
@@ -496,4 +441,3 @@ class KeywordGenerationService:
             
         except Exception as e:
             logger.error(f"Error deleting keywords for input {input_id}: {str(e)}")
-            return False

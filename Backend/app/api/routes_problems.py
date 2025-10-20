@@ -14,6 +14,7 @@ from app.db.models.user_model import UserResponse
 from app.core.security import get_current_user
 from app.services.user_input_service import UserInputService
 from app.services.keyword_generation_service import KeywordGenerationService
+from app.services.reddit_fetching_service import reddit_fetching_service
 from app.db.models.input_model import UserInputRequest
 
 # Configure logging
@@ -62,6 +63,7 @@ async def discover_problems(
         )
         
         # Generate keywords automatically in the background
+        keyword_result = None
         try:
             logger.info(f"Generating keywords for problem discovery input {input_response.input_id}")
             keyword_result = await KeywordGenerationService.generate_keywords_for_input(
@@ -73,6 +75,32 @@ async def discover_problems(
             
             if keyword_result["success"]:
                 logger.info(f"Successfully generated keywords for input {input_response.input_id}")
+                
+                # Automatically fetch Reddit posts based on generated keywords
+                try:
+                    logger.info(f"Starting Reddit post fetching for input {input_response.input_id}")
+                    reddit_data = await reddit_fetching_service.fetch_reddit_posts_for_keywords(
+                        user_id=current_user.id,
+                        input_id=input_response.input_id,
+                        keywords_data=keyword_result["data"],
+                        queries_per_domain=10,  # Increased: More search queries
+                        per_query_limit=100,    # Increased: More posts per query
+                        per_subreddit_limit=100 # Increased: More posts per subreddit
+                    )
+                    
+                    # Save Reddit data to JSON file
+                    file_path = await reddit_fetching_service.save_reddit_data_to_file(
+                        reddit_data=reddit_data,
+                        user_id=current_user.id,
+                        input_id=input_response.input_id
+                    )
+                    
+                    logger.info(f"Successfully fetched and saved {reddit_data['total_posts']} Reddit posts to {file_path}")
+                    
+                except Exception as reddit_error:
+                    logger.error(f"Error fetching Reddit posts for input {input_response.input_id}: {str(reddit_error)}")
+                    # Don't fail the main request if Reddit fetching fails
+                
             else:
                 logger.warning(f"Failed to generate keywords for input {input_response.input_id}: {keyword_result.get('error')}")
         except Exception as keyword_error:

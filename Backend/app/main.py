@@ -4,6 +4,7 @@ from app.api.routes_auth import router as auth_router
 from app.api.routes_problems import router as problems_router
 from app.api.routes_user_input import router as user_input_router
 from app.api.routes_keywords import router as keywords_router
+from app.api.routes_reddit import router as reddit_router
 
 app = FastAPI(title="Clarimo AI API")
 
@@ -20,6 +21,7 @@ app.include_router(auth_router)
 app.include_router(problems_router)
 app.include_router(user_input_router, prefix="/api")
 app.include_router(keywords_router, prefix="/api")
+app.include_router(reddit_router, prefix="/api")
 
 @app.get("/")
 async def root():
