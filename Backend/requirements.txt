@@ -6,3 +6,16 @@ passlib[bcrypt]
 python-multipart
 pydantic[email]
 python-dotenv
+
+# Embedding dependencies
+sentence-transformers
+faiss-cpu
+langdetect
+emoji
+tqdm
+pandas
+numpy
+torch
+
+# Additional dependencies for semantic filtering
+scikit-learn

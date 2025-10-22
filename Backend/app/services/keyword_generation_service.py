@@ -257,8 +257,7 @@ class KeywordGenerationService:
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.6,  
-            "max_tokens": 400,
-            "timeout": 30
+            "max_tokens": 400
         }
 
         # Try each API key until one works

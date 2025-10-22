@@ -15,6 +15,8 @@ from app.core.security import get_current_user
 from app.services.user_input_service import UserInputService
 from app.services.keyword_generation_service import KeywordGenerationService
 from app.services.reddit_fetching_service import reddit_fetching_service
+from app.services.embedding_service import embedding_service
+from app.services.semantic_filtering_service import semantic_filtering_service
 from app.db.models.input_model import UserInputRequest
 
 # Configure logging
@@ -96,6 +98,50 @@ async def discover_problems(
                     )
                     
                     logger.info(f"Successfully fetched and saved {reddit_data['total_posts']} Reddit posts to {file_path}")
+                    
+                    # Automatically generate embeddings from Reddit data
+                    if reddit_data['total_posts'] > 0:  # Only if we have posts
+                        try:
+                            logger.info(f"Starting embedding generation for input {input_response.input_id}")
+                            embedding_result = await embedding_service.generate_embeddings_for_reddit_data(
+                                user_id=current_user.id,
+                                input_id=input_response.input_id,
+                                reddit_json_path=file_path,
+                                use_gpu=False,  # Use CPU for simplicity
+                                batch_size=32   # Smaller batch size for CPU
+                            )
+                            
+                            if embedding_result["success"]:
+                                logger.info(f"Successfully generated embeddings for {embedding_result.get('documents_processed', 0)} documents for input {input_response.input_id}")
+                                
+                                # Automatically run semantic filtering after successful embedding generation
+                                try:
+                                    logger.info(f"Starting semantic filtering for input {input_response.input_id}")
+                                    filtering_result = await semantic_filtering_service.semantic_filter_posts(
+                                        user_id=current_user.id,
+                                        input_id=input_response.input_id,
+                                        query=request.problemDescription,  # Use original user query
+                                        top_k=500,  # Get top 500 candidates
+                                        similarity_threshold=0.55  # Keep posts with similarity >= 0.55
+                                    )
+                                    
+                                    if filtering_result["success"]:
+                                        logger.info(f"Successfully filtered {filtering_result.get('filtered_documents', 0)} relevant posts from {filtering_result.get('total_documents', 0)} total for input {input_response.input_id}")
+                                    else:
+                                        logger.warning(f"Semantic filtering failed for input {input_response.input_id}: {filtering_result.get('message')}")
+                                        
+                                except Exception as filtering_error:
+                                    logger.error(f"Error in semantic filtering for input {input_response.input_id}: {str(filtering_error)}")
+                                    # Don't fail the main request if filtering fails
+                                
+                            else:
+                                logger.warning(f"Embedding generation failed for input {input_response.input_id}: {embedding_result.get('message')}")
+                                
+                        except Exception as embedding_error:
+                            logger.error(f"Error generating embeddings for input {input_response.input_id}: {str(embedding_error)}")
+                            # Don't fail the main request if embedding generation fails
+                    else:
+                        logger.info(f"Skipping embedding generation - no posts fetched for input {input_response.input_id}")
                     
                 except Exception as reddit_error:
                     logger.error(f"Error fetching Reddit posts for input {input_response.input_id}: {str(reddit_error)}")
