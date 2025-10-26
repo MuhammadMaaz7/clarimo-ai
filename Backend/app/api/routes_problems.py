@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from datetime import datetime, timezone
 import uuid
+import json
 from typing import List
 import logging
 from pathlib import Path
@@ -33,7 +34,7 @@ async def discover_problems(
 ):
     """
     Discover problems based on user input.
-    Stores the request in the database and returns mock problem data for frontend testing.
+    Initiates background processing and returns real-time status information.
     """
     try:
         logger.info(f"Processing problem discovery request for user {current_user.id}")
@@ -86,9 +87,9 @@ async def discover_problems(
                         user_id=current_user.id,
                         input_id=input_response.input_id,
                         keywords_data=keyword_result["data"],
-                        queries_per_domain=10,  # Increased: More search queries
-                        per_query_limit=100,    # Increased: More posts per query
-                        per_subreddit_limit=100 # Increased: More posts per subreddit
+                        queries_per_domain=8,   # Balanced: Good coverage without excess
+                        per_query_limit=75,     # Balanced: Quality over quantity
+                        per_subreddit_limit=75  # Balanced: Sufficient diversity
                     )
                     
                     # Save Reddit data to JSON file
@@ -201,54 +202,72 @@ async def discover_problems(
         request_id = input_response.input_id  # Use the same ID for consistency
         timestamp = input_response.created_at
         
-        # For now, return mock data to test the frontend
-        mock_problems = [
-            DiscoveredProblem(
-                id=1,
-                title="Small businesses struggle with managing customer relationships",
-                description="Many small businesses lack affordable CRM solutions that are easy to use and integrate with their existing tools. They often resort to spreadsheets which become unwieldy.",
-                source="r/smallbusiness",
-                score=247,
-                relevance_score=0.85,
-                tags=["CRM", "small business", "customer management"]
-            ),
-            DiscoveredProblem(
-                id=2,
-                title="Remote teams face coordination challenges",
-                description="With the rise of remote work, teams struggle to maintain effective communication and coordination across different time zones and tools.",
-                source="r/remotework",
-                score=189,
-                relevance_score=0.78,
-                tags=["remote work", "team coordination", "communication"]
-            ),
-            DiscoveredProblem(
-                id=3,
-                title="Freelancers waste time on invoicing and payments",
-                description="Independent contractors spend countless hours creating invoices, tracking payments, and following up with clients instead of doing billable work.",
-                source="r/freelance",
-                score=156,
-                relevance_score=0.72,
-                tags=["freelancing", "invoicing", "payments", "time management"]
-            )
-        ]
+        # Determine processing status based on what was completed
+        reddit_posts_count = 0
+        reddit_fetch_status = "failed"
+        embedding_status = "skipped"
         
-        # Update status to completed after processing
+        # Check if Reddit fetching was successful
+        if keyword_result and keyword_result.get("success"):
+            try:
+                # Try to get reddit_data from the processing above
+                if 'reddit_data' in locals() and reddit_data.get('total_posts', 0) > 0:
+                    reddit_posts_count = reddit_data['total_posts']
+                    reddit_fetch_status = "completed"
+                    embedding_status = "in_progress"
+            except Exception:
+                pass
+        
+        # Update status to processing since background tasks may be running
         await UserInputService.update_input_status(
             user_id=current_user.id,
             input_id=input_response.input_id,
-            status="completed"
+            status="processing"
         )
         
-        logger.info(f"Successfully processed problem discovery request {request_id}")
+        logger.info(f"Successfully initiated problem discovery request {request_id}")
         
         return ProblemDiscoveryResponse(
             success=True,
-            message=f"Problem discovery request received and processed. Found {len(mock_problems)} related problems.",
+            message="🚀 Problem discovery initiated! Your AI assistant is getting to work...",
             request_id=request_id,
             timestamp=timestamp,
             data={
-                "problems": [problem.dict() for problem in mock_problems],
-                "total_found": len(mock_problems),
+                "status": "processing",
+                "current_stage": "keyword_generation" if not keyword_result else ("reddit_fetch" if reddit_posts_count == 0 else "embedding_generation"),
+                "progress_percentage": 10 if not keyword_result else (25 if reddit_posts_count == 0 else 40),
+                "interactive_message": "🔑 Generating smart keywords..." if not keyword_result else ("📡 Searching Reddit communities..." if reddit_posts_count == 0 else "🧠 AI analysis starting..."),
+                "animation": "startup",
+                "processing_stages": {
+                    "keyword_generation": {
+                        "status": "completed" if keyword_result and keyword_result.get("success") else "in_progress",
+                        "message": "✅ Keywords generated" if keyword_result and keyword_result.get("success") else "🔑 Generating keywords...",
+                        "icon": "🔑"
+                    },
+                    "reddit_fetch": {
+                        "status": reddit_fetch_status,
+                        "message": f"✅ {reddit_posts_count} posts found" if reddit_posts_count > 0 else "📡 Searching communities...",
+                        "icon": "📡"
+                    },
+                    "embedding_generation": {
+                        "status": embedding_status,
+                        "message": "⏳ Waiting for posts" if reddit_posts_count == 0 else "🧠 AI analysis queued...",
+                        "icon": "🧠"
+                    },
+                    "semantic_filtering": {
+                        "status": "pending",
+                        "message": "⏳ Waiting for analysis",
+                        "icon": "🎯"
+                    }
+                },
+                "reddit_posts_found": reddit_posts_count,
+                "estimated_completion_time": "10-15 minutes" if reddit_posts_count > 0 else "Processing...",
+                "status_check_url": f"/processing-status/{request_id}",
+                "next_steps": [
+                    "✨ Check back in a few minutes for progress updates",
+                    "📊 Use the status endpoint to track real-time progress", 
+                    "🎯 Results will be available once processing completes"
+                ],
                 "search_parameters": request.dict()
             }
         )
@@ -352,6 +371,79 @@ async def get_request_details(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving request details: {str(e)}"
+        )
+
+@router.get("/results/{request_id}")
+async def get_problem_results(
+    request_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get the actual problem discovery results once processing is complete.
+    """
+    try:
+        logger.info(f"Getting results for request {request_id} for user {current_user.id}")
+        
+        # Check if filtered results exist
+        filtered_dir = Path("data/filtered_posts") / current_user.id / request_id
+        filtered_file = filtered_dir / "filtered_posts.json"
+        
+        if not filtered_file.exists():
+            # Check processing status
+            embeddings_dir = Path("data/embeddings") / current_user.id / request_id
+            if (embeddings_dir / "faiss_index.bin").exists():
+                return {
+                    "success": False,
+                    "message": "Results not ready yet. Semantic filtering in progress.",
+                    "status": "filtering_posts"
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Results not ready yet. Embedding generation in progress.",
+                    "status": "generating_embeddings"
+                }
+        
+        # Load and return the filtered results
+        with open(filtered_file, 'r', encoding='utf-8') as f:
+            filtered_posts = json.load(f)
+        
+        # Convert to the expected format
+        problems = []
+        for idx, post in enumerate(filtered_posts[:50]):  # Limit to top 50 results
+            problem = DiscoveredProblem(
+                id=idx + 1,
+                title=post.get("text", "")[:100] + "..." if len(post.get("text", "")) > 100 else post.get("text", ""),
+                description=post.get("text", ""),
+                source=f"r/{post.get('subreddit', 'unknown')}",
+                score=post.get("score", 0),
+                relevance_score=post.get("similarity_score", 0.0),
+                tags=[post.get("subreddit", "unknown")]
+            )
+            problems.append(problem)
+        
+        logger.info(f"Successfully retrieved {len(problems)} results for request {request_id}")
+        
+        return ProblemDiscoveryResponse(
+            success=True,
+            message=f"Found {len(problems)} relevant problems from {len(filtered_posts)} total filtered posts.",
+            request_id=request_id,
+            timestamp=datetime.now(timezone.utc),
+            data={
+                "problems": [problem.dict() for problem in problems],
+                "total_found": len(filtered_posts),
+                "showing": len(problems),
+                "status": "completed"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting results for request {request_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting results: {str(e)}"
         )
 
 @router.delete("/requests/{request_id}")

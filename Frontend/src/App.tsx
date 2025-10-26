@@ -13,8 +13,8 @@ import ComingSoon from "./pages/ComingSoon";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
-
 import LoadingSpinner from "./components/LoadingSpinner";
+import { useTokenValidation } from "./hooks/useTokenValidation";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +22,9 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { user, loading } = useAuth();
+  
+  // Enable periodic token validation (every 5 minutes)
+  useTokenValidation(5);
 
   if (loading) {
     return (
@@ -40,16 +43,16 @@ const AppContent = () => {
       {/* Main app routes - with navbar and sidebar */}
       <Route path="/*" element={
         <SidebarProvider>
-          <div className="min-h-screen flex flex-col bg-gradient-to-br from-accent/20 via-primary/10 to-background relative overflow-hidden">
+          <div className="min-h-screen bg-gradient-to-br from-accent/20 via-primary/10 to-background relative">
             {/* Background Effects */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,hsl(var(--accent))_0%,transparent_50%)] opacity-20" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,hsl(var(--primary))_0%,transparent_50%)] opacity-20" />
             
             <Navbar />
-            <div className="flex flex-1 relative z-10">
+            <div className="flex min-h-[calc(100vh-4rem)] relative z-10">
               {user && <Sidebar />}
               <main className={`flex-1 ${user ? 'lg:ml-4' : ''}`}>
-                <div className="responsive-container">
+                <div className="responsive-container min-h-[calc(100vh-4rem)]">
                   <Routes>
                     <Route path="/" element={
                       <ProtectedRoute>

@@ -1,4 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import { api, ApiError } from '../lib/api';
+import { getTokenManager, SessionState } from '../services/TokenManager';
+import { getActivityDetector } from '../services/ActivityDetector';
+import { getBackgroundTaskMonitor } from '../services/BackgroundTaskMonitor';
+import SessionWarning, { useSessionWarning } from '../components/SessionWarning';
 
 interface User {
   id: string;
@@ -12,46 +17,74 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
+  checkTokenValidity: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ Updated to match modular FastAPI route prefix
-const API_URL = 'http://localhost:8000/auth';
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionWarning = useSessionWarning();
+
+  const logout = () => {
+    // Use TokenManager for proper cleanup
+    const tokenManager = getTokenManager();
+    tokenManager.clearToken();
+    
+    // Stop activity monitoring
+    const activityDetector = getActivityDetector();
+    activityDetector.stopMonitoring();
+    
+    // Cancel background tasks
+    const taskMonitor = getBackgroundTaskMonitor();
+    taskMonitor.cancelAllTasks();
+    
+    setUser(null);
+  };
+
+  // Handle session warning actions
+  const handleStayLoggedIn = async () => {
+    const tokenManager = getTokenManager();
+    tokenManager.extendSession();
+    sessionWarning.hideWarning();
+  };
+
+  const handleLogoutFromWarning = () => {
+    logout();
+    sessionWarning.hideWarning();
+  };
+
+  const handleAutoLogout = () => {
+    console.log('Auto logout triggered from session warning');
+    logout();
+  };
 
   useEffect(() => {
+    // Initialize smart token management
+    const tokenManager = getTokenManager();
+    const activityDetector = getActivityDetector();
+    const taskMonitor = getBackgroundTaskMonitor();
+
     const checkAuth = async () => {
       const token = localStorage.getItem('auth_token');
       console.log('Checking auth on app load, token exists:', !!token);
       
       if (token) {
         try {
-          // Use the correct API endpoint for getting user info
-          const response = await fetch(`${API_URL}/me`, {
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('Auth check successful, user:', userData);
-            setUser(userData);
-          } else {
-            console.log('Auth check failed, response status:', response.status);
-            // Token is invalid, remove it
-            localStorage.removeItem('auth_token');
-            setUser(null);
-          }
+          const userData = await api.auth.me();
+          console.log('Auth check successful, user:', userData);
+          setUser(userData);
+          
+          // Start smart token management
+          activityDetector.startMonitoring();
         } catch (error) {
-          console.error('Auth check failed:', error);
-          localStorage.removeItem('auth_token');
+          console.log('Auth check failed:', error);
+          if (error instanceof ApiError && error.isTokenExpired) {
+            console.log('Token expired, user will be redirected to login');
+          }
           setUser(null);
+          tokenManager.clearToken();
         }
       } else {
         console.log('No token found in localStorage');
@@ -59,46 +92,81 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     };
 
+    // Listen for token expiration events from TokenManager
+    const handleTokenExpired = () => {
+      console.log('Token expired event received from TokenManager');
+      setUser(null);
+      setLoading(false);
+      
+      // Stop activity monitoring
+      activityDetector.stopMonitoring();
+      
+      // Clear any background tasks
+      taskMonitor.cancelAllTasks();
+    };
+
+    // Listen for session state changes
+    const handleSessionStateChanged = (newState: SessionState) => {
+      console.log('Session state changed:', newState);
+      
+      if (newState === SessionState.WARNING) {
+        sessionWarning.showWarning(2); // Show 2-minute warning
+      } else if (newState === SessionState.ACTIVE) {
+        sessionWarning.hideWarning();
+      } else if (newState === SessionState.EXPIRED) {
+        sessionWarning.hideWarning();
+        setUser(null);
+      }
+    };
+
+
+
+    // Set up event listeners
+    tokenManager.onTokenExpired(handleTokenExpired);
+    tokenManager.onSessionStateChanged(handleSessionStateChanged);
+    
+    // Legacy support for existing token expiration events
+    globalThis.addEventListener('auth:token-expired', handleTokenExpired);
+    
     checkAuth();
+
+    return () => {
+      globalThis.removeEventListener('auth:token-expired', handleTokenExpired);
+      
+      // Clean up token manager
+      tokenManager.destroy();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || 'Login failed');
+    try {
+      const data = await api.auth.login(email, password);
+      localStorage.setItem('auth_token', data.access_token);
+      setUser(data.user);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new Error(error.message);
+      }
+      throw new Error('Login failed');
     }
-
-    const data = await response.json();
-    localStorage.setItem('auth_token', data.access_token);
-    setUser(data.user);
   };
 
   const signup = async (email: string, password: string, fullName: string) => {
-    const response = await fetch(`${API_URL}/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, full_name: fullName }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || 'Signup failed');
+    try {
+      const data = await api.auth.signup(email, password, fullName);
+      localStorage.setItem('auth_token', data.access_token);
+      setUser(data.user);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new Error(error.message);
+      }
+      throw new Error('Signup failed');
     }
-
-    const data = await response.json();
-    localStorage.setItem('auth_token', data.access_token);
-    setUser(data.user);
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    setUser(null);
+  const checkTokenValidity = async (): Promise<boolean> => {
+    const tokenManager = getTokenManager();
+    return await tokenManager.validateToken();
   };
 
   const contextValue = useMemo(() => ({
@@ -106,12 +174,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading,
     login,
     signup,
-    logout
+    logout,
+    checkTokenValidity
   }), [user, loading]);
 
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
+      <SessionWarning
+        isVisible={sessionWarning.isVisible}
+        timeRemainingMinutes={sessionWarning.timeRemaining}
+        onStayLoggedIn={handleStayLoggedIn}
+        onLogout={handleLogoutFromWarning}
+        onAutoLogout={handleAutoLogout}
+      />
     </AuthContext.Provider>
   );
 };

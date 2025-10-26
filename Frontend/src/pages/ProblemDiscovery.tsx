@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProblemForm, { FormData } from '../components/ProblemForm';
 import ProblemCard from '../components/ProblemCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProcessingStatus from '../components/ProcessingStatus';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { api, ApiError } from '../lib/api';
+import { getBackgroundTaskMonitor, TaskType } from '../services/BackgroundTaskMonitor';
 
 interface Problem {
   id: number;
@@ -13,93 +16,152 @@ interface Problem {
   score: number;
 }
 
+interface ProcessingStatus {
+  input_id: string;
+  overall_status: string;
+  progress_percentage: number;
+  current_stage: string;
+  message: string;
+  description: string;
+  animation: string;
+  next_action: string;
+  estimated_time_remaining: string;
+  can_view_results: boolean;
+}
+
 const ProblemDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [, setCurrentRequestId] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus | null>(null);
+  const [statusPollingInterval, setStatusPollingInterval] = useState<number | null>(null);
   const { user } = useAuth();
 
-  // Mock data for demonstration
-  const mockProblems: Problem[] = [
-    {
-      id: 1,
-      title: 'Small businesses struggle with managing customer relationships',
-      description: 'Many small businesses lack affordable CRM solutions that are easy to use and integrate with their existing tools. They often resort to spreadsheets which become unwieldy.',
-      subreddit: 'smallbusiness',
-      score: 247,
-    },
-    {
-      id: 2,
-      title: 'Remote teams face coordination challenges',
-      description: 'With the rise of remote work, teams struggle to maintain effective communication and coordination across different time zones and tools.',
-      subreddit: 'remotework',
-      score: 189,
-    },
-    {
-      id: 3,
-      title: 'Freelancers waste time on invoicing and payments',
-      description: 'Independent contractors spend countless hours creating invoices, tracking payments, and following up with clients instead of doing billable work.',
-      subreddit: 'freelance',
-      score: 156,
-    },
-    {
-      id: 4,
-      title: 'Students need better tools for collaborative learning',
-      description: 'Current education platforms lack features that promote peer-to-peer learning and make group projects more manageable.',
-      subreddit: 'education',
-      score: 134,
-    },
-    {
-      id: 5,
-      title: 'Content creators struggle with managing multiple platforms',
-      description: 'Creators waste time posting the same content across multiple social media platforms and struggle to analyze their performance holistically.',
-      subreddit: 'contentcreation',
-      score: 112,
-    },
-  ];
+  // Removed mock data - now uses real API responses only
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (statusPollingInterval) {
+        clearInterval(statusPollingInterval);
+      }
+    };
+  }, [statusPollingInterval]);
+
+  // Poll for processing status
+  const startStatusPolling = (requestId: string) => {
+    const pollStatus = async () => {
+      try {
+        const status = await api.status.getProcessingStatus(requestId);
+        setProcessingStatus(status);
+
+        if (status.overall_status === 'completed' && status.can_view_results) {
+          // Stop polling and fetch results
+          if (statusPollingInterval) {
+            clearInterval(statusPollingInterval);
+            setStatusPollingInterval(null);
+          }
+
+          // Unregister background task
+          const taskMonitor = getBackgroundTaskMonitor();
+          const taskId = `problem_discovery_${requestId}`;
+          taskMonitor.unregisterTask(taskId);
+
+          try {
+            const results = await api.problems.getResults(requestId);
+            if (results.success && results.data?.problems) {
+              const transformedProblems = results.data.problems.map((problem: any) => ({
+                id: problem.id,
+                title: problem.title,
+                description: problem.description,
+                subreddit: problem.source?.replace('r/', '') || 'unknown',
+                score: problem.score || 0
+              }));
+              setProblems(transformedProblems);
+            }
+          } catch (error) {
+            console.error('Error fetching results:', error);
+          }
+
+          setIsLoading(false);
+        } else if (status.overall_status === 'failed' || status.overall_status === 'error') {
+          // Unregister background task on failure
+          const taskMonitor = getBackgroundTaskMonitor();
+          const taskId = `problem_discovery_${requestId}`;
+          taskMonitor.unregisterTask(taskId);
+
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+        if (statusPollingInterval) {
+          clearInterval(statusPollingInterval);
+          setStatusPollingInterval(null);
+        }
+        setIsLoading(false);
+      }
+    };
+
+    // Poll every 3 seconds
+    const interval = setInterval(pollStatus, 3000);
+    setStatusPollingInterval(interval as unknown as number);
+
+    // Initial poll
+    pollStatus();
+  };
 
   const handleSubmit = async (data: FormData) => {
     setIsLoading(true);
     setHasSearched(true);
-    
+    setProblems([]);
+    setProcessingStatus(null);
+
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/problems/discover', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(data),
-      });
+      const result = await api.problems.discover(data);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (result.success && result.request_id) {
+        setCurrentRequestId(result.request_id);
 
-      const result = await response.json();
-      
-      if (result.success && result.data?.problems) {
-        // Transform the API response to match our Problem interface
-        const transformedProblems = result.data.problems.map((problem: any) => ({
-          id: problem.id,
-          title: problem.title,
-          description: problem.description,
-          subreddit: problem.source,
-          score: problem.score
-        }));
-        
-        setProblems(transformedProblems);
+        // Register background task for session protection
+        const taskMonitor = getBackgroundTaskMonitor();
+
+        const taskId = `problem_discovery_${result.request_id}`;
+        taskMonitor.registerTask({
+          id: taskId,
+          type: TaskType.PROBLEM_DISCOVERY,
+          startTime: new Date(),
+          description: `Problem discovery for: ${data.problemDescription.substring(0, 50)}...`
+        });
+
+        // Start polling for status updates
+        startStatusPolling(result.request_id);
+
+        // Set initial processing status from response
+        if (result.data) {
+          setProcessingStatus({
+            input_id: result.request_id,
+            overall_status: result.data.status || 'processing',
+            progress_percentage: result.data.progress_percentage || 10,
+            current_stage: result.data.current_stage || 'keyword_generation',
+            message: result.message || 'Processing started...',
+            description: 'Your request is being processed in the background.',
+            animation: result.data.animation || 'startup',
+            next_action: 'Please wait while we process your request...',
+            estimated_time_remaining: result.data.estimated_completion_time || '10-15 minutes',
+            can_view_results: false
+          });
+        }
       } else {
         console.error('API response format error:', result);
-        // Fallback to mock data if API response is unexpected
-        setProblems(mockProblems);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error calling problem discovery API:', error);
-      // Fallback to mock data on error
-      setProblems(mockProblems);
-    } finally {
+      if (error instanceof ApiError) {
+        // Handle specific API errors (like token expiration)
+        console.error('API Error:', error.message);
+      }
       setIsLoading(false);
     }
   };
@@ -124,8 +186,11 @@ const ProblemDiscovery = () => {
       {/* Form */}
       <ProblemForm onSubmit={handleSubmit} isLoading={isLoading} />
 
-      {/* Results */}
-      {isLoading && <LoadingSpinner size="lg" />}
+      {/* Interactive Processing Status */}
+      {isLoading && processingStatus && <ProcessingStatus status={processingStatus} />}
+
+      {/* Simple Loading for non-status cases */}
+      {isLoading && !processingStatus && <LoadingSpinner size="lg" />}
 
       {!isLoading && problems.length > 0 && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

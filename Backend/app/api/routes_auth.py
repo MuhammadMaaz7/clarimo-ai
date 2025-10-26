@@ -49,3 +49,16 @@ async def login(credentials: UserLogin):
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: UserResponse = Depends(get_current_user)):
     return current_user
+
+@router.get("/validate-token")
+async def validate_token(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Validate if the current token is still valid.
+    Returns user info if valid, 401 if expired/invalid.
+    Frontend can use this to check token status.
+    """
+    return {
+        "valid": True,
+        "user": current_user,
+        "message": "Token is valid"
+    }
