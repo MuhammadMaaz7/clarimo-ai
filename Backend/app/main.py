@@ -7,6 +7,7 @@ from app.api.routes_keywords import router as keywords_router
 from app.api.routes_reddit import router as reddit_router
 from app.api.routes_embeddings import router as embeddings_router
 from app.api.routes_semantic_filtering import router as semantic_filtering_router
+from app.api.routes_processing_status import router as processing_status_router
 
 app = FastAPI(title="Clarimo AI API")
 
@@ -26,6 +27,7 @@ app.include_router(keywords_router, prefix="/api")
 app.include_router(reddit_router, prefix="/api")
 app.include_router(embeddings_router, prefix="/api")
 app.include_router(semantic_filtering_router, prefix="/api")
+app.include_router(processing_status_router, prefix="/api")
 
 @app.get("/")
 async def root():

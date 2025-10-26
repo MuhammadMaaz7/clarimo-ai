@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 DetectorFactory.seed = 0
 
 # ------------------------
-# CONFIG
+# CONFIG - BALANCED FOR PERFORMANCE AND QUALITY
 # ------------------------
 MODEL_NAME = "mixedbread-ai/mxbai-embed-large-v1"
-DEFAULT_BATCH_SIZE = 64
-MIN_WORDS_KEEP = 3
-CHUNK_MAX_WORDS = 200
-CHUNK_OVERLAP = 50
+DEFAULT_BATCH_SIZE = 256  # Larger batch size for better CPU throughput
+MIN_WORDS_KEEP = 12  # Balanced threshold - not too aggressive
+CHUNK_MAX_WORDS = 350  # Balanced chunk size for context preservation
+CHUNK_OVERLAP = 30     # Maintain good overlap for context
 EMBED_CACHE_DIRNAME = "embed_cache"
 META_FILENAME = "faiss_metadata.json"
 FAISS_INDEX_FILENAME = "faiss_index.bin"
@@ -142,15 +142,27 @@ class EmbeddingService:
     
     def __init__(self):
         self.use_gpu = False  # Use CPU for simplicity and reliability
-        self.batch_size = 32  # Smaller batch size for CPU
+        self.batch_size = 256  # Optimized batch size for CPU throughput
         self.model: Optional[SentenceTransformer] = None
+        self._model_loading = False  # Prevent concurrent model loading
     
     def _load_model(self):
-        """Load the embedding model on CPU"""
-        if self.model is None:
-            logger.info("=> Using CPU for embeddings (simple and reliable)")
-            logger.info(f"Loading model {MODEL_NAME} ...")
-            self.model = SentenceTransformer(MODEL_NAME, device="cpu")
+        """Load the embedding model on CPU with optimizations"""
+        if self.model is None and not self._model_loading:
+            self._model_loading = True
+            try:
+                logger.info("=> Using CPU for embeddings (optimized for throughput)")
+                logger.info(f"Loading model {MODEL_NAME} ...")
+                
+                # Load model with CPU optimizations
+                self.model = SentenceTransformer(MODEL_NAME, device="cpu")
+                
+                # Set number of threads for CPU optimization
+                torch.set_num_threads(min(8, torch.get_num_threads()))  # Limit threads to prevent oversubscription
+                
+                logger.info(f"Model loaded successfully with {torch.get_num_threads()} CPU threads")
+            finally:
+                self._model_loading = False
     
     async def _convert_reddit_data_format(self, reddit_json_path: str) -> str:
         """
@@ -313,8 +325,17 @@ class EmbeddingService:
             # Preprocess text
             clean_text = reddit_preprocess(combined_text, keep_emojis=False)
             
-            # Skip if too short
-            if len(clean_text.split()) < MIN_WORDS_KEEP:
+            # Skip if too short or low quality
+            words = clean_text.split()
+            if len(words) < MIN_WORDS_KEEP:
+                continue
+            
+            # Skip very short posts (likely low quality) - balanced filtering
+            if len(words) < 20 and p.get("score", 0) < 5:
+                continue
+            
+            # Skip posts with very low engagement (likely spam/low quality) - but not too aggressive
+            if p.get("score", 0) <= 0 and p.get("num_comments", 0) <= 0:
                 continue
             
             # Skip non-English content
@@ -366,11 +387,13 @@ class EmbeddingService:
             texts = [d["text"] for d in new_docs]
             logger.info(f"Encoding {len(texts)} new documents...")
             
+            # Use optimized batch size and enable CPU optimizations
             new_embeddings = self.model.encode(
                 texts, 
-                batch_size=batch_size, 
+                batch_size=min(batch_size, 256),  # Cap at 256 for memory efficiency
                 show_progress_bar=True,
-                convert_to_numpy=True
+                convert_to_numpy=True,
+                normalize_embeddings=True  # Pre-normalize for cosine similarity
             )
             
             # Cache new embeddings

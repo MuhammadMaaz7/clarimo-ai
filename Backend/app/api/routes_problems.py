@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import uuid
 from typing import List
 import logging
+from pathlib import Path
 
 from app.db.models.problem_model import (
     ProblemDiscoveryRequest, 
@@ -99,47 +100,90 @@ async def discover_problems(
                     
                     logger.info(f"Successfully fetched and saved {reddit_data['total_posts']} Reddit posts to {file_path}")
                     
-                    # Automatically generate embeddings from Reddit data
-                    if reddit_data['total_posts'] > 0:  # Only if we have posts
+                    # Import processing lock service
+                    from app.services.processing_lock_service import processing_lock_service
+                    
+                    # Check if embeddings are already being processed or completed
+                    embeddings_dir = Path("data/embeddings") / current_user.id / input_response.input_id
+                    filtered_dir = Path("data/filtered_posts") / current_user.id / input_response.input_id
+                    
+                    # Check if already processing
+                    is_processing = await processing_lock_service.is_processing(current_user.id, input_response.input_id)
+                    
+                    if (filtered_dir / "filtered_posts.json").exists():
+                        logger.info(f"Semantic filtering already completed for input {input_response.input_id}")
+                    elif (embeddings_dir / "faiss_index.bin").exists():
+                        logger.info(f"Embeddings already exist for input {input_response.input_id}, running semantic filtering only")
+                        # Run only semantic filtering
                         try:
-                            logger.info(f"Starting embedding generation for input {input_response.input_id}")
-                            embedding_result = await embedding_service.generate_embeddings_for_reddit_data(
+                            filtering_result = await semantic_filtering_service.semantic_filter_posts(
                                 user_id=current_user.id,
                                 input_id=input_response.input_id,
-                                reddit_json_path=file_path,
-                                use_gpu=False,  # Use CPU for simplicity
-                                batch_size=32   # Smaller batch size for CPU
+                                query=request.problemDescription,
+                                top_k=500,
+                                similarity_threshold=0.55
                             )
+                            if filtering_result["success"]:
+                                logger.info(f"Successfully filtered {filtering_result.get('filtered_documents', 0)} relevant posts for input {input_response.input_id}")
+                        except Exception as e:
+                            logger.error(f"Error in semantic filtering for input {input_response.input_id}: {str(e)}")
+                    elif is_processing:
+                        logger.info(f"Embeddings already being processed for input {input_response.input_id} - skipping duplicate request")
+                    elif reddit_data['total_posts'] > 0:  # Only if we have posts and no existing embeddings
+                        import asyncio
+                        
+                        async def background_embedding_task():
+                            """Background task for embedding generation and semantic filtering"""
+                            # Acquire processing lock
+                            lock_acquired = await processing_lock_service.acquire_lock(current_user.id, input_response.input_id)
+                            if not lock_acquired:
+                                logger.info(f"Could not acquire lock for input {input_response.input_id} - already processing")
+                                return
                             
-                            if embedding_result["success"]:
-                                logger.info(f"Successfully generated embeddings for {embedding_result.get('documents_processed', 0)} documents for input {input_response.input_id}")
+                            try:
+                                logger.info(f"Starting background embedding generation for input {input_response.input_id}")
+                                embedding_result = await embedding_service.generate_embeddings_for_reddit_data(
+                                    user_id=current_user.id,
+                                    input_id=input_response.input_id,
+                                    reddit_json_path=file_path,
+                                    use_gpu=False,  # Use CPU for simplicity
+                                    batch_size=128   # Optimized batch size for CPU
+                                )
                                 
-                                # Automatically run semantic filtering after successful embedding generation
-                                try:
-                                    logger.info(f"Starting semantic filtering for input {input_response.input_id}")
-                                    filtering_result = await semantic_filtering_service.semantic_filter_posts(
-                                        user_id=current_user.id,
-                                        input_id=input_response.input_id,
-                                        query=request.problemDescription,  # Use original user query
-                                        top_k=500,  # Get top 500 candidates
-                                        similarity_threshold=0.55  # Keep posts with similarity >= 0.55
-                                    )
+                                if embedding_result["success"]:
+                                    logger.info(f"Background: Successfully generated embeddings for {embedding_result.get('documents_processed', 0)} documents for input {input_response.input_id}")
                                     
-                                    if filtering_result["success"]:
-                                        logger.info(f"Successfully filtered {filtering_result.get('filtered_documents', 0)} relevant posts from {filtering_result.get('total_documents', 0)} total for input {input_response.input_id}")
-                                    else:
-                                        logger.warning(f"Semantic filtering failed for input {input_response.input_id}: {filtering_result.get('message')}")
+                                    # Automatically run semantic filtering after successful embedding generation
+                                    try:
+                                        logger.info(f"Background: Starting semantic filtering for input {input_response.input_id}")
+                                        filtering_result = await semantic_filtering_service.semantic_filter_posts(
+                                            user_id=current_user.id,
+                                            input_id=input_response.input_id,
+                                            query=request.problemDescription,  # Use original user query
+                                            top_k=500,  # Get top 500 candidates
+                                            similarity_threshold=0.55  # Keep posts with similarity >= 0.55
+                                        )
                                         
-                                except Exception as filtering_error:
-                                    logger.error(f"Error in semantic filtering for input {input_response.input_id}: {str(filtering_error)}")
-                                    # Don't fail the main request if filtering fails
-                                
-                            else:
-                                logger.warning(f"Embedding generation failed for input {input_response.input_id}: {embedding_result.get('message')}")
-                                
-                        except Exception as embedding_error:
-                            logger.error(f"Error generating embeddings for input {input_response.input_id}: {str(embedding_error)}")
-                            # Don't fail the main request if embedding generation fails
+                                        if filtering_result["success"]:
+                                            logger.info(f"Background: Successfully filtered {filtering_result.get('filtered_documents', 0)} relevant posts from {filtering_result.get('total_documents', 0)} total for input {input_response.input_id}")
+                                        else:
+                                            logger.warning(f"Background: Semantic filtering failed for input {input_response.input_id}: {filtering_result.get('message')}")
+                                            
+                                    except Exception as filtering_error:
+                                        logger.error(f"Background: Error in semantic filtering for input {input_response.input_id}: {str(filtering_error)}")
+                                    
+                                else:
+                                    logger.warning(f"Background: Embedding generation failed for input {input_response.input_id}: {embedding_result.get('message')}")
+                                    
+                            except Exception as embedding_error:
+                                logger.error(f"Background: Error generating embeddings for input {input_response.input_id}: {str(embedding_error)}")
+                            finally:
+                                # Always release the lock
+                                await processing_lock_service.release_lock(current_user.id, input_response.input_id)
+                        
+                        # Start background task without waiting
+                        background_task = asyncio.create_task(background_embedding_task())
+                        logger.info(f"Started background embedding generation for input {input_response.input_id} - user can continue without waiting")
                     else:
                         logger.info(f"Skipping embedding generation - no posts fetched for input {input_response.input_id}")
                     
