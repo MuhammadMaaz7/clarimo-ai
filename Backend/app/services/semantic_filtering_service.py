@@ -157,6 +157,26 @@ class SemanticFilteringService:
             logger.info(f"Filtered posts saved to {filtered_posts_path}")
             logger.info(f"Filtering config saved to {config_path}")
             
+            # Trigger automatic clustering if we have enough posts
+            if len(relevant_posts) >= 5:
+                try:
+                    logger.info("Triggering automatic clustering after filtering...")
+                    from app.services.clustering_service import clustering_service
+                    
+                    # Run clustering in background (don't wait for completion)
+                    import asyncio
+                    asyncio.create_task(clustering_service.cluster_filtered_posts(
+                        user_id=user_id,
+                        input_id=input_id,
+                        create_visualization=True
+                    ))
+                    
+                    logger.info("Automatic clustering task started")
+                except Exception as e:
+                    logger.warning(f"Failed to start automatic clustering: {str(e)}")
+            else:
+                logger.info(f"Skipping clustering - too few posts ({len(relevant_posts)})")
+            
             # Create summary statistics
             similarity_stats = {
                 "min_similarity": float(min([p["similarity_score"] for p in relevant_posts])) if relevant_posts else 0.0,

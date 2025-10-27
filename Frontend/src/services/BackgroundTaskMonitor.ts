@@ -23,7 +23,8 @@ export enum TaskType {
   KEYWORD_GENERATION = 'keyword_generation',
   REDDIT_FETCHING = 'reddit_fetching',
   SEMANTIC_FILTERING = 'semantic_filtering',
-  EMBEDDING_GENERATION = 'embedding_generation'
+  EMBEDDING_GENERATION = 'embedding_generation',
+  CLUSTERING = 'clustering'
 }
 
 export interface TaskStatusUpdate {

@@ -170,6 +170,97 @@ export const api = {
         total_inputs: number;
       }>('/api/processing-status/'),
   },
+
+  // Clustering endpoints
+  clustering: {
+    clusterPosts: (data: {
+      input_id: string;
+      min_cluster_size?: number;
+      create_visualization?: boolean;
+    }) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        total_posts: number;
+        clusters_found: number;
+        clustered_posts?: number;
+        noise_posts?: number;
+        clusters?: Record<string, any>;
+        statistics?: Record<string, any>;
+        output_files?: Record<string, string>;
+        clusters_directory?: string;
+      }>('/api/clustering/cluster', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    getClusterResults: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        input_id: string;
+        clusters: Record<string, any>;
+        statistics: Record<string, any>;
+        clustering_metadata: Record<string, any>;
+        config: Record<string, any>;
+        files: Record<string, string>;
+        directory: string;
+      }>(`/api/clustering/results/${inputId}`),
+    
+    listClusterResults: () =>
+      apiRequest<{
+        success: boolean;
+        cluster_results: any[];
+        total_results: number;
+      }>('/api/clustering/list'),
+    
+    deleteClusterResults: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        deleted_directory: string;
+      }>(`/api/clustering/results/${inputId}`, {
+        method: 'DELETE',
+      }),
+    
+    triggerAutoClustering: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        input_id: string;
+        status: string;
+      }>(`/api/clustering/auto-cluster/${inputId}`, {
+        method: 'POST',
+      }),
+  },
+
+  // Embedding cache endpoints
+  cache: {
+    getStatistics: () =>
+      apiRequest<{
+        success: boolean;
+        cache_statistics: {
+          cache_exists: boolean;
+          cached_embeddings: number;
+          cache_size_mb: number;
+          cache_directory?: string;
+        };
+        explanation: {
+          purpose: string;
+          scope: string;
+          benefit: string;
+        };
+      }>('/api/embeddings/cache/stats'),
+    
+    clear: () =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        embeddings_removed: number;
+        space_freed_mb: number;
+      }>('/api/embeddings/cache/clear', {
+        method: 'DELETE',
+      }),
+  },
 };
 
 export { ApiError };

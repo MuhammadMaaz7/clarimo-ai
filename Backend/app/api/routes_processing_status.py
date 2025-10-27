@@ -52,9 +52,47 @@ async def get_processing_status(
         filtered_dir = Path("data/filtered_posts") / current_user.id / input_id
         filtering_completed = (filtered_dir / "filtered_posts.json").exists()
         
+        # Check clustering
+        clusters_dir = Path("data/clusters") / current_user.id / input_id
+        clustering_completed = (clusters_dir / "cluster_summary.json").exists()
+        
         # Determine current stage and create engaging messages
-        if filtering_completed:
-            # All done!
+        if clustering_completed:
+            # All done including clustering!
+            try:
+                with open(filtered_dir / "filtered_posts.json", 'r', encoding='utf-8') as f:
+                    filtered_posts = json.load(f)
+                    filtered_count = len(filtered_posts)
+                
+                with open(clusters_dir / "cluster_summary.json", 'r', encoding='utf-8') as f:
+                    cluster_data = json.load(f)
+                    clusters_count = len(cluster_data.get("clusters", {}))
+            except Exception:
+                filtered_count = 0
+                clusters_count = 0
+                
+            return {
+                "input_id": input_id,
+                "overall_status": "completed",
+                "progress_percentage": 100,
+                "current_stage": "completed",
+                "message": "🎉 Problem discovery complete!",
+                "description": f"Found {filtered_count} problems organized into {clusters_count} themes",
+                "animation": "celebration",
+                "next_action": "View your discovered problems and themes",
+                "stages": {
+                    "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
+                    "reddit_fetch": {"status": "completed", "message": f"✅ {reddit_posts_count} posts collected", "icon": "📡"},
+                    "embedding_generation": {"status": "completed", "message": "✅ AI analysis complete", "icon": "🧠"},
+                    "semantic_filtering": {"status": "completed", "message": f"✅ {filtered_count} problems discovered", "icon": "🎯"},
+                    "clustering": {"status": "completed", "message": f"✅ {clusters_count} themes identified", "icon": "🗂️"}
+                },
+                "estimated_time_remaining": "0 minutes",
+                "can_view_results": True
+            }
+            
+        elif filtering_completed:
+            # Filtering done, clustering in progress
             try:
                 with open(filtered_dir / "filtered_posts.json", 'r', encoding='utf-8') as f:
                     filtered_posts = json.load(f)
@@ -64,21 +102,22 @@ async def get_processing_status(
                 
             return {
                 "input_id": input_id,
-                "overall_status": "completed",
-                "progress_percentage": 100,
-                "current_stage": "completed",
-                "message": "🎉 Problem discovery complete!",
-                "description": f"Found {filtered_count} relevant problems from {reddit_posts_count} posts",
-                "animation": "celebration",
-                "next_action": "View your discovered problems",
+                "overall_status": "clustering",
+                "progress_percentage": 95,
+                "current_stage": "clustering",
+                "message": "🗂️ Organizing problems into themes...",
+                "description": f"Grouping {filtered_count} problems into thematic clusters for better insights",
+                "animation": "organizing",
+                "next_action": "Creating problem themes and categories",
                 "stages": {
                     "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
                     "reddit_fetch": {"status": "completed", "message": f"✅ {reddit_posts_count} posts collected", "icon": "📡"},
                     "embedding_generation": {"status": "completed", "message": "✅ AI analysis complete", "icon": "🧠"},
-                    "semantic_filtering": {"status": "completed", "message": f"✅ {filtered_count} problems discovered", "icon": "🎯"}
+                    "semantic_filtering": {"status": "completed", "message": f"✅ {filtered_count} problems discovered", "icon": "🎯"},
+                    "clustering": {"status": "in_progress", "message": "🗂️ Organizing into themes...", "icon": "⚡"}
                 },
-                "estimated_time_remaining": "0 minutes",
-                "can_view_results": True
+                "estimated_time_remaining": "1-2 minutes",
+                "can_view_results": False
             }
             
         elif embeddings_completed:
@@ -96,7 +135,8 @@ async def get_processing_status(
                     "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
                     "reddit_fetch": {"status": "completed", "message": f"✅ {reddit_posts_count} posts collected", "icon": "📡"},
                     "embedding_generation": {"status": "completed", "message": "✅ AI analysis complete", "icon": "🧠"},
-                    "semantic_filtering": {"status": "in_progress", "message": "🎯 Finding relevant problems...", "icon": "⚡"}
+                    "semantic_filtering": {"status": "in_progress", "message": "🎯 Finding relevant problems...", "icon": "⚡"},
+                    "clustering": {"status": "pending", "message": "⏳ Waiting for filtering", "icon": "⏳"}
                 },
                 "estimated_time_remaining": "2-3 minutes",
                 "can_view_results": False
@@ -117,7 +157,8 @@ async def get_processing_status(
                     "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
                     "reddit_fetch": {"status": "completed", "message": f"✅ {reddit_posts_count} posts collected", "icon": "📡"},
                     "embedding_generation": {"status": "in_progress", "message": "🧠 AI analyzing content...", "icon": "⚡"},
-                    "semantic_filtering": {"status": "pending", "message": "⏳ Waiting for analysis", "icon": "⏳"}
+                    "semantic_filtering": {"status": "pending", "message": "⏳ Waiting for analysis", "icon": "⏳"},
+                    "clustering": {"status": "pending", "message": "⏳ Waiting for filtering", "icon": "⏳"}
                 },
                 "estimated_time_remaining": "8-12 minutes",
                 "can_view_results": False
@@ -138,7 +179,8 @@ async def get_processing_status(
                     "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
                     "reddit_fetch": {"status": "in_progress", "message": "📡 Collecting posts...", "icon": "⚡"},
                     "embedding_generation": {"status": "pending", "message": "⏳ Waiting for posts", "icon": "⏳"},
-                    "semantic_filtering": {"status": "pending", "message": "⏳ Waiting for analysis", "icon": "⏳"}
+                    "semantic_filtering": {"status": "pending", "message": "⏳ Waiting for analysis", "icon": "⏳"},
+                    "clustering": {"status": "pending", "message": "⏳ Waiting for filtering", "icon": "⏳"}
                 },
                 "estimated_time_remaining": "15-20 minutes",
                 "can_view_results": False

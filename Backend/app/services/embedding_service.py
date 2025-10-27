@@ -25,6 +25,9 @@ import torch
 # FAISS
 import faiss
 
+# Optimized cache
+from .optimized_embedding_cache import OptimizedEmbeddingCache
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -145,6 +148,13 @@ class EmbeddingService:
         self.batch_size = 256  # Optimized batch size for CPU throughput
         self.model: Optional[SentenceTransformer] = None
         self._model_loading = False  # Prevent concurrent model loading
+        
+        # Initialize optimized global cache for public Reddit data
+        self.optimized_cache = OptimizedEmbeddingCache(
+            cache_dir=Path("data/embeddings/global_cache_optimized"),
+            similarity_threshold=0.87,  # Lowered from 0.95 to capture semantic similarities
+            max_cache_size=5000
+        )
     
     def _load_model(self):
         """Load the embedding model on CPU with optimizations"""
@@ -245,7 +255,7 @@ class EmbeddingService:
         try:
             logger.info(f"Starting embedding generation for input {input_id} (user: {user_id})")
             
-            # Create output directory for embeddings (relative to Backend dir)
+            # Create output directory for embeddings
             embeddings_dir = Path("data/embeddings") / user_id / input_id
             embeddings_dir.mkdir(parents=True, exist_ok=True)
             
@@ -366,23 +376,42 @@ class EmbeddingService:
         return processed_docs
     
     async def _generate_embeddings(self, processed_docs: List[Dict], embeddings_dir: Path, batch_size: int) -> np.ndarray:
-        """Generate embeddings for processed documents"""
-        cache_dir = embeddings_dir / EMBED_CACHE_DIRNAME
-        cache = EmbedCache(cache_dir)
-        
+        """Generate embeddings for processed documents using optimized tiered cache"""
         encoded_map = {}
+        cache_stats = {"exact": 0, "normalized": 0, "semantic": 0, "new": 0}
         
-        # Separate cached and new documents
-        cached_hashes = [d["hash"] for d in processed_docs if cache.exists(d["hash"])]
-        new_docs = [d for d in processed_docs if not cache.exists(d["hash"])]
+        # Process documents with tiered cache lookup
+        new_docs = []
+        for doc in tqdm(processed_docs, desc="Checking cache tiers"):
+            text = doc["text"]
+            
+            # Try tiered cache lookup
+            cached_embedding, cache_type = self.optimized_cache.get_cached_embedding(text)
+            
+            if cached_embedding is not None:
+                encoded_map[doc["hash"]] = cached_embedding
+                cache_stats[cache_type] += 1
+            else:
+                new_docs.append(doc)
+                cache_stats["new"] += 1
         
-        logger.info(f"🧠 Found {len(cached_hashes)} cached embeddings, {len(new_docs)} new to compute.")
+        # Log cache statistics
+        total_docs = len(processed_docs)
+        total_hits = cache_stats["exact"] + cache_stats["normalized"] + cache_stats["semantic"]
+        cache_hit_rate = (total_hits / total_docs * 100) if total_docs > 0 else 0
         
-        # Load cached embeddings
-        for h in tqdm(cached_hashes, desc="Loading cached embeddings"):
-            encoded_map[h] = cache.load(h)
+        logger.info("🧠 Optimized Cache Statistics:")
+        logger.info(f"   📊 Total documents: {total_docs}")
+        logger.info(f"   ⚡ Exact hits: {cache_stats['exact']} ({cache_stats['exact']/total_docs*100:.1f}%)")
+        logger.info(f"   🔄 Normalized hits: {cache_stats['normalized']} ({cache_stats['normalized']/total_docs*100:.1f}%)")
+        logger.info(f"   🎯 Semantic hits: {cache_stats['semantic']} ({cache_stats['semantic']/total_docs*100:.1f}%)")
+        logger.info(f"   🆕 New to compute: {cache_stats['new']} ({cache_stats['new']/total_docs*100:.1f}%)")
+        logger.info(f"   📈 Overall hit rate: {cache_hit_rate:.1f}%")
         
-        # Generate new embeddings
+        if cache_hit_rate > 0:
+            logger.info(f"   💰 Cache saved {total_hits} embedding computations!")
+        
+        # Generate new embeddings for cache misses
         if new_docs:
             texts = [d["text"] for d in new_docs]
             logger.info(f"Encoding {len(texts)} new documents...")
@@ -396,9 +425,9 @@ class EmbeddingService:
                 normalize_embeddings=True  # Pre-normalize for cosine similarity
             )
             
-            # Cache new embeddings
+            # Cache new embeddings and add to encoded_map
             for doc, emb in zip(new_docs, new_embeddings):
-                cache.save(doc["hash"], emb)
+                self.optimized_cache.cache_embedding(doc["text"], emb)
                 encoded_map[doc["hash"]] = emb
         
         # Create final embedding matrix
@@ -431,6 +460,262 @@ class EmbeddingService:
         pd.DataFrame(meta_records).to_csv(embeddings_dir / "faiss_metadata.csv", index=False)
         
         logger.info("Index and metadata saved successfully")
+    
+    def get_cache_statistics(self) -> Dict[str, Any]:
+        """Get optimized cache statistics with tiered metrics"""
+        try:
+            # Get optimized cache statistics
+            optimized_stats = self.optimized_cache.get_cache_statistics()
+            
+            # Also check legacy cache for migration info
+            legacy_cache_dir = Path("data/embeddings") / "global_cache"
+            legacy_stats = {
+                "exists": legacy_cache_dir.exists(),
+                "cached_embeddings": 0,
+                "cache_size_mb": 0
+            }
+            
+            if legacy_cache_dir.exists():
+                legacy_files = list(legacy_cache_dir.glob("*.npy"))
+                legacy_size = sum(f.stat().st_size for f in legacy_files) / (1024 * 1024)
+                legacy_stats.update({
+                    "cached_embeddings": len(legacy_files),
+                    "cache_size_mb": round(legacy_size, 2)
+                })
+            
+            # Combine statistics for backward compatibility
+            return {
+                "cache_exists": True,
+                "optimized_cache": optimized_stats,
+                "legacy_cache": legacy_stats,
+                # Backward compatibility fields
+                "cached_embeddings": optimized_stats.get("cache_counts", {}).get("exact", 0),
+                "cache_size_mb": optimized_stats.get("cache_sizes_mb", {}).get("total", 0),
+                "cache_directory": str(self.optimized_cache.cache_dir),
+                "cache_type": "optimized_tiered"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting cache statistics: {str(e)}")
+            return {
+                "cache_exists": False,
+                "cached_embeddings": 0,
+                "cache_size_mb": 0,
+                "error": str(e)
+            }
+    
+    def migrate_legacy_cache(self) -> Dict[str, Any]:
+        """
+        Migrate from legacy cache to optimized cache structure with comprehensive validation and logging
+        
+        Returns:
+            Dictionary with migration results including success status, counts, and error details
+        """
+        migration_start_time = datetime.now()
+        migration_results = {
+            "success": False,
+            "message": "",
+            "migrated_count": 0,
+            "failed_count": 0,
+            "skipped_count": 0,
+            "validation_errors": [],
+            "legacy_cache_dir": "",
+            "optimized_cache_dir": str(self.optimized_cache.cache_dir),
+            "migration_duration_seconds": 0,
+            "data_integrity_check": False
+        }
+        
+        try:
+            logger.info("🔄 Starting legacy cache migration process...")
+            
+            # Step 1: Detect existing cache files
+            legacy_cache_locations = [
+                Path("data/embeddings") / "global_cache",
+                Path("data/embeddings") / "embed_cache",  # Alternative legacy location
+            ]
+            
+            legacy_cache_dir = None
+            total_legacy_files = 0
+            
+            # Find the legacy cache directory with files
+            for cache_location in legacy_cache_locations:
+                if cache_location.exists():
+                    legacy_files = list(cache_location.glob("*.npy"))
+                    if legacy_files:
+                        legacy_cache_dir = cache_location
+                        total_legacy_files = len(legacy_files)
+                        logger.info(f"📁 Found legacy cache at: {cache_location} ({total_legacy_files} files)")
+                        break
+            
+            if legacy_cache_dir is None:
+                migration_results.update({
+                    "success": True,
+                    "message": "No legacy cache found to migrate",
+                    "migration_duration_seconds": (datetime.now() - migration_start_time).total_seconds()
+                })
+                logger.info("✅ No legacy cache found - migration not needed")
+                return migration_results
+            
+            migration_results["legacy_cache_dir"] = str(legacy_cache_dir)
+            
+            # Step 2: Pre-migration validation
+            logger.info(f"🔍 Validating {total_legacy_files} legacy cache files...")
+            
+            valid_files = []
+            invalid_files = []
+            
+            for npy_file in legacy_cache_dir.glob("*.npy"):
+                try:
+                    # Validate file can be loaded
+                    embedding = np.load(npy_file)
+                    
+                    # Validate embedding structure
+                    if not isinstance(embedding, np.ndarray):
+                        raise ValueError("Not a valid numpy array")
+                    
+                    if embedding.size == 0:
+                        raise ValueError("Empty embedding array")
+                    
+                    if len(embedding.shape) != 1:
+                        raise ValueError(f"Invalid embedding shape: {embedding.shape}")
+                    
+                    # Validate embedding dimensions (typical range for sentence transformers)
+                    if embedding.shape[0] < 100 or embedding.shape[0] > 2048:
+                        logger.warning(f"Unusual embedding dimension: {embedding.shape[0]} for file {npy_file.name}")
+                    
+                    # Validate hash format (should be 16 character hex)
+                    hash_key = npy_file.stem
+                    if len(hash_key) != 16 or not all(c in '0123456789abcdef' for c in hash_key.lower()):
+                        logger.warning(f"Non-standard hash format: {hash_key}")
+                    
+                    valid_files.append((npy_file, embedding, hash_key))
+                    
+                except Exception as e:
+                    invalid_files.append((npy_file, str(e)))
+                    migration_results["validation_errors"].append(f"{npy_file.name}: {str(e)}")
+                    logger.warning(f"❌ Invalid cache file {npy_file.name}: {str(e)}")
+            
+            logger.info(f"✅ Validation complete: {len(valid_files)} valid, {len(invalid_files)} invalid files")
+            
+            # Step 3: Migration process with progress tracking
+            logger.info("🚀 Starting migration of valid cache files...")
+            
+            migrated_count = 0
+            failed_count = len(invalid_files)
+            skipped_count = 0
+            
+            # Create progress tracking
+            from tqdm import tqdm
+            
+            for npy_file, embedding, hash_key in tqdm(valid_files, desc="Migrating cache files"):
+                try:
+                    # Check if already exists in optimized cache
+                    exact_path = self.optimized_cache.exact_cache_dir / f"{hash_key}.npy"
+                    
+                    if exact_path.exists():
+                        # Verify existing file is identical
+                        existing_embedding = np.load(exact_path)
+                        if np.array_equal(embedding, existing_embedding):
+                            skipped_count += 1
+                            logger.debug(f"⏭️ Skipped {hash_key} - already exists and identical")
+                            continue
+                        else:
+                            logger.warning(f"⚠️ Hash collision detected for {hash_key} - overwriting with legacy version")
+                    
+                    # Save to optimized cache exact tier
+                    np.save(exact_path, embedding)
+                    
+                    # Also save to normalized tier (best effort - we don't have original text)
+                    normalized_path = self.optimized_cache.normalized_cache_dir / f"{hash_key}.npy"
+                    np.save(normalized_path, embedding)
+                    
+                    migrated_count += 1
+                    
+                    # Log progress every 100 files
+                    if migrated_count % 100 == 0:
+                        logger.info(f"📈 Migration progress: {migrated_count}/{len(valid_files)} files completed")
+                    
+                except Exception as e:
+                    failed_count += 1
+                    error_msg = f"Failed to migrate {npy_file.name}: {str(e)}"
+                    migration_results["validation_errors"].append(error_msg)
+                    logger.error(f"❌ {error_msg}")
+                    continue
+            
+            # Step 4: Post-migration data integrity check
+            logger.info("🔍 Performing post-migration data integrity check...")
+            
+            integrity_check_passed = True
+            sample_size = min(10, migrated_count)  # Check up to 10 random files
+            
+            if sample_size > 0:
+                import random
+                sample_files = random.sample(valid_files[:migrated_count], sample_size)
+                
+                for npy_file, original_embedding, hash_key in sample_files:
+                    try:
+                        migrated_path = self.optimized_cache.exact_cache_dir / f"{hash_key}.npy"
+                        migrated_embedding = np.load(migrated_path)
+                        
+                        if not np.array_equal(original_embedding, migrated_embedding):
+                            integrity_check_passed = False
+                            logger.error(f"❌ Data integrity check failed for {hash_key}")
+                            break
+                            
+                    except Exception as e:
+                        integrity_check_passed = False
+                        logger.error(f"❌ Data integrity check error for {hash_key}: {str(e)}")
+                        break
+            
+            # Step 5: Update migration results
+            migration_duration = (datetime.now() - migration_start_time).total_seconds()
+            
+            migration_results.update({
+                "success": True,
+                "migrated_count": migrated_count,
+                "failed_count": failed_count,
+                "skipped_count": skipped_count,
+                "migration_duration_seconds": round(migration_duration, 2),
+                "data_integrity_check": integrity_check_passed
+            })
+            
+            # Generate summary message
+            if migrated_count > 0:
+                migration_results["message"] = (
+                    f"Successfully migrated {migrated_count} embeddings from legacy cache. "
+                    f"Failed: {failed_count}, Skipped: {skipped_count}. "
+                    f"Duration: {migration_duration:.1f}s"
+                )
+            else:
+                migration_results["message"] = "No valid embeddings found to migrate"
+            
+            # Log final results
+            logger.info("🎉 Legacy cache migration completed!")
+            logger.info(f"📊 Migration Summary:")
+            logger.info(f"   ✅ Migrated: {migrated_count} files")
+            logger.info(f"   ❌ Failed: {failed_count} files")
+            logger.info(f"   ⏭️ Skipped: {skipped_count} files")
+            logger.info(f"   ⏱️ Duration: {migration_duration:.1f} seconds")
+            logger.info(f"   🔍 Data integrity: {'✅ PASSED' if integrity_check_passed else '❌ FAILED'}")
+            
+            if not integrity_check_passed:
+                logger.warning("⚠️ Data integrity check failed - please verify migrated data manually")
+            
+            return migration_results
+            
+        except Exception as e:
+            migration_duration = (datetime.now() - migration_start_time).total_seconds()
+            error_message = f"Critical error during legacy cache migration: {str(e)}"
+            
+            logger.error(f"💥 {error_message}")
+            
+            migration_results.update({
+                "success": False,
+                "message": error_message,
+                "migration_duration_seconds": round(migration_duration, 2)
+            })
+            
+            return migration_results
 
     async def list_user_embeddings(self, user_id: str) -> List[Dict[str, Any]]:
         """
@@ -485,5 +770,60 @@ class EmbeddingService:
         except Exception as e:
             logger.error(f"Error listing user embeddings: {str(e)}")
             return []
+    
+    async def clear_global_cache(self, cache_type: str = "all") -> Dict[str, Any]:
+        """Clear the global embedding cache (optimized and/or legacy)"""
+        try:
+            import shutil
+            
+            # Get stats before clearing
+            stats_before = self.get_cache_statistics()
+            embeddings_removed = 0
+            space_freed_mb = 0
+            
+            # Clear optimized cache
+            if cache_type in ["all", "optimized"]:
+                optimized_stats = stats_before.get("optimized_cache", {})
+                optimized_counts = optimized_stats.get("cache_counts", {})
+                optimized_sizes = optimized_stats.get("cache_sizes_mb", {})
+                
+                embeddings_removed += sum(optimized_counts.values())
+                space_freed_mb += optimized_sizes.get("total", 0)
+                
+                self.optimized_cache.clear_cache("all")
+                logger.info("Optimized embedding cache cleared")
+            
+            # Clear legacy cache
+            if cache_type in ["all", "legacy"]:
+                legacy_cache_dir = Path("data/embeddings") / "global_cache"
+                if legacy_cache_dir.exists():
+                    legacy_stats = stats_before.get("legacy_cache", {})
+                    embeddings_removed += legacy_stats.get("cached_embeddings", 0)
+                    space_freed_mb += legacy_stats.get("cache_size_mb", 0)
+                    
+                    shutil.rmtree(legacy_cache_dir)
+                    logger.info("Legacy embedding cache cleared")
+            
+            message = f"Global embedding cache cleared successfully"
+            if cache_type != "all":
+                message = f"{cache_type.title()} cache cleared successfully"
+            
+            return {
+                "success": True,
+                "message": message,
+                "embeddings_removed": embeddings_removed,
+                "space_freed_mb": round(space_freed_mb, 2),
+                "cache_type_cleared": cache_type
+            }
+                
+        except Exception as e:
+            logger.error(f"Error clearing global cache: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error clearing cache: {str(e)}",
+                "embeddings_removed": 0,
+                "space_freed_mb": 0
+            }
+
 # Create a singleton instance for use across the application
 embedding_service = EmbeddingService()

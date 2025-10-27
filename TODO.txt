@@ -1,0 +1,31 @@
+embeddings should be used
+saved in global
+if similar context data, then used 
+
+test with 2 similar inputs
+
+remove user1,2,3,4
+
+what is global cache, and optimized global cache
+
+
+what is exact, normalized, semantic
+
+
+what is the purpose of this exact, normalized, semantic
+
+how will it work?
+
+now lets start doing testing first from frontend whole pipeline
+
+llets let me input smth like, apps for personal gym training
+
+Smth like this
+
+when all of this steps are done from user oinput till clustering, then
+
+i will enter another input similar to it, not same, so we can test the embeddings cache are being used or not?
+
+
+
+for testing, change first priority to semantic hits, so we can check if it is hitting semantically or not? working correctly or not?

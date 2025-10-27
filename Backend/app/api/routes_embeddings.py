@@ -234,3 +234,110 @@ async def delete_embeddings(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete embeddings: {str(e)}"
         )
+
+@router.get("/cache/stats")
+async def get_cache_statistics(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get global embedding cache statistics
+    
+    Shows tiered cache performance with exact, normalized, and semantic matching.
+    The optimized cache uses multiple strategies to maximize cache hit rates.
+    """
+    try:
+        logger.info(f"Getting cache statistics for user {current_user.id}")
+        
+        stats = embedding_service.get_cache_statistics()
+        
+        return {
+            "success": True,
+            "cache_statistics": stats,
+            "explanation": {
+                "purpose": "Tiered cache system with exact, normalized, and semantic matching",
+                "scope": "Global cache shared across all users and inputs",
+                "benefit": "Dramatically improved cache hit rates through intelligent text matching",
+                "tiers": {
+                    "exact": "Direct hash match (fastest)",
+                    "normalized": "Text normalization for variations (fast)",
+                    "semantic": "Cosine similarity for similar content (comprehensive)"
+                }
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting cache statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get cache statistics: {str(e)}"
+        )
+
+
+@router.delete("/cache/clear")
+async def clear_embedding_cache(
+    current_user: UserResponse = Depends(get_current_user),
+    cache_type: str = Query("all", description="Cache type to clear: 'all', 'optimized', or 'legacy'")
+):
+    """
+    Clear the global embedding cache
+    
+    This will remove cached embeddings based on the cache_type parameter.
+    - 'all': Clear both optimized and legacy caches
+    - 'optimized': Clear only the new tiered cache
+    - 'legacy': Clear only the old simple cache
+    
+    Note: This affects all users since the cache is global.
+    """
+    try:
+        logger.info(f"Clearing {cache_type} embedding cache requested by user {current_user.id}")
+        
+        if cache_type not in ["all", "optimized", "legacy"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid cache_type. Must be 'all', 'optimized', or 'legacy'"
+            )
+        
+        result = await embedding_service.clear_global_cache(cache_type)
+        
+        if result["success"]:
+            logger.info(f"Cache cleared: {result['embeddings_removed']} embeddings, {result['space_freed_mb']} MB freed")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error clearing cache: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear cache: {str(e)}"
+        )
+
+
+@router.post("/cache/migrate")
+async def migrate_legacy_cache(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Migrate legacy cache to optimized cache structure
+    
+    This endpoint migrates embeddings from the old simple cache format
+    to the new optimized tiered cache system. This is typically done
+    automatically, but can be triggered manually if needed.
+    """
+    try:
+        logger.info(f"Cache migration requested by user {current_user.id}")
+        
+        result = embedding_service.migrate_legacy_cache()
+        
+        if result["success"]:
+            logger.info(f"Cache migration completed: {result['migrated_count']} embeddings migrated")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error migrating cache: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to migrate cache: {str(e)}"
+        )
