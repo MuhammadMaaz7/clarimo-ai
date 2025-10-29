@@ -31,10 +31,16 @@ class SemanticFilteringService:
         self.model: Optional[SentenceTransformer] = None
     
     def _load_model(self):
-        """Load the embedding model (same as used for embedding generation)"""
+        """Load the global model singleton - shared across all services"""
         if self.model is None:
-            logger.info(f"Loading model {MODEL_NAME} for semantic filtering...")
-            self.model = SentenceTransformer(MODEL_NAME, device="cpu")
+            from .embedding_service import get_global_model
+            logger.info(f"🧠 Getting global model singleton for semantic filtering...")
+            self.model = get_global_model(use_gpu=False)  # Use CPU for filtering
+            
+            if self.model is not None:
+                logger.info(f"✅ Global model singleton ready for semantic filtering!")
+            else:
+                logger.error("❌ Failed to get global model singleton for semantic filtering")
     
     def _load_index_and_metadata(self, index_dir: Path) -> tuple:
         """Load FAISS index, metadata, and embedding matrix"""
