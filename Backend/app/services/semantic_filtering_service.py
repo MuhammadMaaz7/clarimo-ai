@@ -174,7 +174,8 @@ class SemanticFilteringService:
                     asyncio.create_task(clustering_service.cluster_filtered_posts(
                         user_id=user_id,
                         input_id=input_id,
-                        create_visualization=True
+                        create_visualization=True,
+                        original_query=query  # Pass the original query through
                     ))
                     
                     logger.info("Automatic clustering task started")

@@ -913,7 +913,8 @@ class ClusteringService:
         user_id: str,
         input_id: str,
         min_cluster_size: Optional[int] = None,
-        create_visualization: bool = True
+        create_visualization: bool = True,
+        original_query: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Cluster semantically filtered posts into problem themes
@@ -994,6 +995,35 @@ class ClusteringService:
                 json.dump(clustering_config, f, indent=2)
             
             logger.info(f"Clustering completed: {cluster_results['statistics']['n_clusters']} clusters from {len(posts)} posts")
+            
+            # Automatically trigger pain points extraction after successful clustering
+            try:
+                logger.info(f"Starting automatic pain points extraction for input {input_id}")
+                from app.services.pain_points_service import pain_points_service
+                
+                pain_points_result = await pain_points_service.extract_pain_points_from_clusters(
+                    user_id=user_id,
+                    input_id=input_id,
+                    original_query=original_query
+                )
+                
+                if pain_points_result["success"]:
+                    pain_points_count = len(pain_points_result["pain_points_data"]["pain_points"]) if pain_points_result["pain_points_data"] else 0
+                    logger.info(f"Automatic pain points extraction completed: {pain_points_count} pain points generated")
+                else:
+                    logger.warning(f"Automatic pain points extraction failed: {pain_points_result.get('error', 'Unknown error')}")
+                    
+            except Exception as pain_points_error:
+                logger.error(f"Error in automatic pain points extraction: {str(pain_points_error)}")
+                # Don't fail the clustering if pain points extraction fails
+            
+            # Release processing lock after entire pipeline completes (clustering + pain points)
+            try:
+                from app.services.processing_lock_service import processing_lock_service
+                await processing_lock_service.release_lock(user_id, input_id)
+                logger.info(f"Released processing lock after complete pipeline for {input_id}")
+            except Exception as lock_error:
+                logger.error(f"Error releasing processing lock: {str(lock_error)}")
             
             return {
                 "success": True,

@@ -19,3 +19,6 @@ torch
 
 # Additional dependencies for semantic filtering
 scikit-learn
+
+# Pain points extraction dependencies
+groq
