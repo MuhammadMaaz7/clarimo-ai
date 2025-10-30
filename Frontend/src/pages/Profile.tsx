@@ -1,249 +1,248 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { User, History, BarChart3, Calendar, ExternalLink, AlertCircle } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { User, Mail, Settings, History, BarChart3, Lightbulb } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../lib/api';
-
-interface HistoryItem {
-  input_id: string;
-  original_query: string;
-  pain_points_count: number;
-  total_clusters: number;
-  analysis_timestamp: string;
-  created_at: string;
-}
-
-interface UserStats {
-  total_analyses: number;
-  total_pain_points: number;
-  total_clusters: number;
-  latest_analysis: string | null;
-}
+import { useToast } from '../hooks/use-toast';
 
 const Profile = () => {
-  const { user } = useAuth();
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, logout, updateProfile } = useAuth();
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: user?.full_name || '',
+    email: user?.email || ''
+  });
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const handleSave = async () => {
+    // Basic validation
+    if (!formData.fullName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Full name is required",
+      });
+      return;
+    }
 
-  const fetchUserData = async () => {
+    if (!formData.email.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Email is required",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter a valid email address",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
     try {
-      setLoading(true);
-      
-      // Fetch both history and stats
-      const [historyResponse, statsResponse] = await Promise.all([
-        api.painPoints.getHistory(),
-        api.painPoints.getStats()
-      ]);
+      await updateProfile({
+        full_name: formData.fullName,
+        email: formData.email
+      });
 
-      if (historyResponse.success) {
-        setHistory(historyResponse.history);
-      }
-
-      if (statsResponse.success) {
-        setStats(statsResponse.stats);
-      }
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load profile data');
+      toast({
+        title: "Success!",
+        description: "Profile updated successfully!",
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : 'Failed to update profile. Please try again.',
+      });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const handleCancel = () => {
+    // Reset form data to original values
+    setFormData({
+      fullName: user?.full_name || '',
+      email: user?.email || ''
     });
+    setIsEditing(false);
   };
-
-  const viewAnalysis = (inputId: string) => {
-    // Navigate to the analysis view (you can implement this based on your routing)
-    window.location.href = `/analysis/${inputId}`;
-  };
-
-  if (loading) {
-    return (
-      <div className="responsive-spacing-md pb-8">
-        <div className="flex items-center justify-center p-12">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-            <span className="text-lg font-medium text-white">Loading profile...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="responsive-spacing-md pb-8">
-        <div className="text-center p-8">
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6">
-            <AlertCircle className="mx-auto h-12 w-12 text-red-400 mb-4" />
-            <p className="text-red-300 mb-4">Error loading profile: {error}</p>
-            <Button onClick={fetchUserData} variant="outline" className="border-red-500/20 text-red-300 hover:bg-red-500/10">
-              Try Again
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="responsive-spacing-md pb-8">
-      {/* Header */}
-      <div className="glass border-border/50 rounded-2xl p-8 md:p-12 text-center glow-sm bg-white/5 backdrop-blur-xl mb-8">
-        <div className="mb-6 flex justify-center">
+    <div className="px-4 md:px-6 lg:px-8 pt-4 pb-8">
+      {/* Profile Header */}
+      <div className="glass border-border/50 rounded-2xl p-6 md:p-8 bg-white/5 backdrop-blur-xl mb-8">
+        <div className="flex items-center gap-6">
           <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 p-4 glow-sm shadow-lg">
-            <User className="h-10 w-10 text-white" />
+            <User className="h-12 w-12 text-white" />
           </div>
+          <div className="flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              {user?.full_name}
+            </h1>
+            <p className="text-muted-foreground flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              {user?.email}
+            </p>
+            {/* <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Member since Recently
+            </p> */}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setIsEditing(!isEditing)}
+            className="border-border/50 text-white hover:bg-white/10"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            {isEditing ? 'Cancel' : 'Edit Profile'}
+          </Button>
         </div>
-        <h1 className="mb-4 text-3xl md:text-5xl font-bold text-white animate-in fade-in slide-in-from-bottom-4 duration-700">
-          Welcome, {user?.full_name?.split(' ')[0]}!
-        </h1>
-        <p className="mx-auto max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-          Your problem discovery journey and analysis history
-        </p>
       </div>
 
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 hover:bg-white/10 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/20 rounded-lg">
-                  <BarChart3 className="h-6 w-6 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stats.total_analyses}</p>
-                  <p className="text-sm text-gray-400">Total Analyses</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 hover:bg-white/10 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-500/20 rounded-lg">
-                  <AlertCircle className="h-6 w-6 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stats.total_pain_points}</p>
-                  <p className="text-sm text-gray-400">Problems Found</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 hover:bg-white/10 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-purple-500/20 rounded-lg">
-                  <History className="h-6 w-6 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stats.total_clusters}</p>
-                  <p className="text-sm text-gray-400">Discussion Themes</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 hover:bg-white/10 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-orange-500/20 rounded-lg">
-                  <Calendar className="h-6 w-6 text-orange-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">
-                    {stats.latest_analysis ? formatDate(stats.latest_analysis).split(',')[0] : 'Never'}
-                  </p>
-                  <p className="text-sm text-gray-400">Latest Analysis</p>
-                </div>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Profile Information */}
+        <div className="lg:col-span-2">
+          <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
+            <CardHeader>
+              <CardTitle className="text-xl text-white flex items-center gap-3">
+                <User className="h-6 w-6 text-blue-400" />
+                Profile Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isEditing ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-white">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                      className="glass border-border/50 bg-white/5 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className="glass border-border/50 bg-white/5 text-white"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <Label className="text-muted-foreground">Full Name</Label>
+                    <p className="text-white font-medium mt-1">{user?.full_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Email Address</Label>
+                    <p className="text-white font-medium mt-1">{user?.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Account Status</Label>
+                    <p className="text-green-400 font-medium mt-1">Active</p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
-      )}
 
-      {/* Analysis History */}
-      <Card className="bg-white/5 backdrop-blur-sm border-white/10">
-        <CardHeader>
-          <CardTitle className="text-xl text-white flex items-center gap-3">
-            <History className="h-6 w-6 text-blue-400" />
-            Analysis History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {history.length === 0 ? (
-            <div className="text-center py-12">
-              <History className="mx-auto h-16 w-16 text-gray-400 mb-6" />
-              <h3 className="text-xl font-semibold text-white mb-2">No Analyses Yet</h3>
-              <p className="text-gray-400 mb-6">Start by discovering problems to see your history here.</p>
-              <Button 
-                onClick={() => window.location.href = '/'}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+        {/* Quick Actions & Navigation */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
+            <CardHeader>
+              <CardTitle className="text-lg text-white">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-white/10"
+                onClick={() => globalThis.location.href = '/'}
               >
-                Start Problem Discovery
+                <BarChart3 className="h-4 w-4 mr-3 text-blue-400" />
+                New Problem Discovery
               </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {history.map((item) => (
-                <div 
-                  key={item.input_id}
-                  className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-white font-medium mb-2 leading-relaxed">
-                        "{item.original_query}"
-                      </h3>
-                      <div className="flex items-center gap-6 text-sm text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="h-4 w-4 text-green-400" />
-                          {item.pain_points_count} problems
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <History className="h-4 w-4 text-purple-400" />
-                          {item.total_clusters} themes
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4 text-orange-400" />
-                          {formatDate(item.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => viewAnalysis(item.input_id)}
-                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 ml-4"
-                    >
-                      View Analysis <ExternalLink className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-white/10"
+                onClick={() => globalThis.location.href = '/discovered-problems'}
+              >
+                <History className="h-4 w-4 mr-3 text-green-400" />
+                My Discovered Problems
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-white/10 opacity-50 cursor-not-allowed"
+                disabled
+              >
+                <Lightbulb className="h-4 w-4 mr-3 text-yellow-400" />
+                Idea Validation (Coming Soon)
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Account Actions */}
+          <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
+            <CardHeader>
+              <CardTitle className="text-lg text-white">Account</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-white/10"
+              >
+                <Settings className="h-4 w-4 mr-3 text-gray-400" />
+                Account Settings
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-red-400 hover:bg-red-500/10"
+                onClick={logout}
+              >
+                <User className="h-4 w-4 mr-3" />
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

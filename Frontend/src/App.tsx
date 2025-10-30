@@ -14,6 +14,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
 import AnalysisView from "./pages/AnalysisView";
+import DiscoveredProblems from "./pages/DiscoveredProblems";
 import LoadingSpinner from "./components/LoadingSpinner";
 import { useTokenValidation } from "./hooks/useTokenValidation";
 
@@ -68,6 +69,11 @@ const AppContent = () => {
                     <Route path="/analysis/:inputId" element={
                       <ProtectedRoute>
                         <AnalysisView />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/discovered-problems" element={
+                      <ProtectedRoute>
+                        <DiscoveredProblems />
                       </ProtectedRoute>
                     } />
                     <Route path="/idea-validation" element={

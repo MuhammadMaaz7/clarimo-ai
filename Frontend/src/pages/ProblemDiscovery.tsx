@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import ProblemForm, { FormData } from '../components/ProblemForm';
-
-import LoadingSpinner from '../components/LoadingSpinner';
-import ProcessingStatus from '../components/ProcessingStatus';
+import SimpleLoadingStatus from '../components/SimpleLoadingStatus';
 import PainPointsDisplay from '../components/PainPointsDisplay';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +36,8 @@ const ProblemDiscovery = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus | null>(null);
+  const [isValidationError, setIsValidationError] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
   const [statusPollingInterval, setStatusPollingInterval] = useState<number | null>(null);
   const [showPainPoints, setShowPainPoints] = useState(false);
   const { user } = useAuth();
@@ -125,6 +125,8 @@ const ProblemDiscovery = () => {
     setHasSearched(true);
     setProblems([]);
     setProcessingStatus(null);
+    setIsValidationError(false);
+    setValidationMessage('');
 
     try {
       const result = await api.problems.discover(data);
@@ -168,57 +170,104 @@ const ProblemDiscovery = () => {
     } catch (error) {
       console.error('Error calling problem discovery API:', error);
       if (error instanceof ApiError) {
-        // Handle specific API errors (like token expiration)
-        console.error('API Error:', error.message);
+        // Handle validation failures
+        setIsValidationError(true);
+        setValidationMessage(error.message);
       }
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="responsive-spacing-md pb-8">
-      {/* Hero Section */}
-      <div className="glass border-border/50 rounded-2xl p-8 md:p-12 text-center glow-sm bg-white/5 backdrop-blur-xl">
-        <div className="mb-6 flex justify-center">
-          <div className="rounded-2xl bg-gradient-to-br from-accent to-primary p-4 glow-sm shadow-lg">
-            <Sparkles className="h-10 w-10 text-white" />
+    <div className="px-4 md:px-6 lg:px-8 pt-4 pb-8 relative">
+      {/* Subtle Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-40 left-10 w-24 h-24 bg-accent/5 rounded-full blur-2xl"></div>
+      </div>
+      
+      <div className="relative z-10">
+      {/* Welcome Section - Only show when no results */}
+      {!hasSearched && (
+        <div className="glass border-border/50 rounded-2xl p-6 md:p-8 text-center glow-sm bg-white/5 backdrop-blur-xl mb-8">
+          <div className="mb-4 flex justify-center">
+            <div className="rounded-xl bg-gradient-to-br from-accent to-primary p-3 glow-sm shadow-lg">
+              <Sparkles className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          <h1 className="mb-3 text-2xl md:text-3xl font-bold text-white animate-in fade-in slide-in-from-bottom-4 duration-700">
+            Welcome back, {user?.full_name?.split(' ')[0]}
+          </h1>
+          <p className="mx-auto max-w-2xl text-base text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+            Discover real problems from online communities and identify business opportunities
+          </p>
+        </div>
+      )}
+
+      {/* Compact Search Bar - Always visible at top when results exist */}
+      {hasSearched && (
+        <div className="glass border-border/50 rounded-xl p-4 bg-white/5 backdrop-blur-xl mb-6 sticky top-4 z-10">
+          <div className="flex items-center gap-4">
+            <div className="rounded-lg bg-gradient-to-br from-accent to-primary p-2">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-white">Problem Discovery</h2>
+              <p className="text-sm text-muted-foreground">Search for new problems or view current results</p>
+            </div>
+            <button 
+              onClick={() => {
+                setHasSearched(false);
+                setShowPainPoints(false);
+                setIsValidationError(false);
+                setValidationMessage('');
+              }}
+              className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg transition-colors text-sm"
+            >
+              New Search
+            </button>
           </div>
         </div>
-        <h1 className="mb-4 text-3xl md:text-5xl font-bold text-white animate-in fade-in slide-in-from-bottom-4 duration-700">
-          Welcome back, {user?.full_name?.split(' ')[0]}!
-        </h1>
-        <p className="mx-auto max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-          Uncover real problems from online communities and identify opportunities worth pursuing
-        </p>
+      )}
+
+      {/* Form - Full size when no results, compact when results exist */}
+      <div className={hasSearched ? "mb-4" : ""}>
+        <ProblemForm onSubmit={handleSubmit} isLoading={isLoading} compact={hasSearched} />
       </div>
 
-      {/* Form */}
-      <ProblemForm onSubmit={handleSubmit} isLoading={isLoading} />
 
-      {/* Interactive Processing Status */}
-      {isLoading && processingStatus && <ProcessingStatus status={processingStatus} />}
 
-      {/* Simple Loading for non-status cases */}
-      {isLoading && !processingStatus && <LoadingSpinner size="lg" />}
+      {/* Loading Status - Appears right below form */}
+      {(isLoading || isValidationError) && (
+        <div className="mt-6">
+          <SimpleLoadingStatus 
+            isValidationError={isValidationError}
+            validationMessage={validationMessage}
+            onRetry={() => {
+              setIsValidationError(false);
+              setValidationMessage('');
+              setHasSearched(false);
+            }}
+          />
+        </div>
+      )}
 
-      {/* Pain Points Display - Priority Display */}
+      {/* Results Display - Appears right below form/loading */}
       {!isLoading && showPainPoints && currentRequestId && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <PainPointsDisplay inputId={currentRequestId} />
         </div>
       )}
 
-
-
-
-
-      {!isLoading && hasSearched && !showPainPoints && (
+      {/* No Results Message */}
+      {!isLoading && hasSearched && !showPainPoints && !isValidationError && (
         <div className="glass rounded-2xl border-dashed border-2 border-border/50 p-16 text-center">
           <p className="text-muted-foreground text-lg">
             No problems found. Try adjusting your search criteria.
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 };

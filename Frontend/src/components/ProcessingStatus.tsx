@@ -28,6 +28,9 @@ const ProcessingStatus = ({ status }: ProcessingStatusProps) => {
         return <Target className="h-8 w-8 text-white" />;
       case 'completed':
         return <CheckCircle className="h-8 w-8 text-white" />;
+      case 'validation':
+      case 'failed':
+        return <AlertCircle className="h-8 w-8 text-red-400" />;
       default:
         return <AlertCircle className="h-8 w-8 text-white" />;
     }
@@ -45,6 +48,8 @@ const ProcessingStatus = ({ status }: ProcessingStatusProps) => {
         return 'animate-pulse';
       case 'celebration':
         return 'animate-bounce';
+      case 'error':
+        return 'animate-pulse';
       default:
         return 'animate-pulse';
     }
@@ -67,15 +72,26 @@ const ProcessingStatus = ({ status }: ProcessingStatusProps) => {
     return 'pending';
   };
 
+  // Check if this is a validation failure
+  const isValidationFailure = status.overall_status === 'failed' && status.current_stage === 'validation';
+  
   return (
-    <div className="glass rounded-2xl border-border/50 p-8 text-center glow-sm bg-white/5 backdrop-blur-xl">
+    <div className={`glass rounded-2xl border-border/50 p-8 text-center glow-sm backdrop-blur-xl ${
+      isValidationFailure ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5'
+    }`}>
       <div className="mb-6 flex justify-center">
-        <div className={`rounded-2xl bg-gradient-to-br from-accent to-primary p-4 glow-sm shadow-lg ${getAnimationClass(status.animation)}`}>
+        <div className={`rounded-2xl p-4 glow-sm shadow-lg ${getAnimationClass(status.animation)} ${
+          isValidationFailure 
+            ? 'bg-gradient-to-br from-red-500 to-red-600' 
+            : 'bg-gradient-to-br from-accent to-primary'
+        }`}>
           {getStageIcon(status.current_stage)}
         </div>
       </div>
       
-      <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+      <h2 className={`text-2xl md:text-3xl font-bold mb-4 ${
+        isValidationFailure ? 'text-red-400' : 'text-white'
+      }`}>
         {status.message}
       </h2>
       
@@ -83,49 +99,78 @@ const ProcessingStatus = ({ status }: ProcessingStatusProps) => {
         {status.description}
       </p>
       
-      {/* Progress Bar */}
-      <div className="w-full bg-border/30 rounded-full h-3 mb-4 overflow-hidden">
-        <div 
-          className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-1000 ease-out rounded-full glow-sm"
-          style={{ width: `${status.progress_percentage}%` }}
-        />
-      </div>
+      {isValidationFailure && (
+        <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-300 font-medium mb-2">
+            ❌ Input Validation Failed
+          </p>
+          <p className="text-red-200 text-sm">
+            {status.next_action}
+          </p>
+        </div>
+      )}
       
-      <div className="flex justify-between text-sm text-muted-foreground mb-6">
-        <span>{status.progress_percentage}% Complete</span>
-        <span>ETA: {status.estimated_time_remaining}</span>
-      </div>
-      
-      {/* Stage Indicators */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-        {stages.map((stage) => {
-          const stageStatus = getStageStatus(stage.key);
-          const isActive = status.current_stage === stage.key;
-          const isCompleted = stageStatus === 'completed';
-          
-          return (
+      {/* Progress Bar - Hide for validation failures */}
+      {!isValidationFailure && (
+        <>
+          <div className="w-full bg-border/30 rounded-full h-3 mb-4 overflow-hidden">
             <div 
-              key={stage.key}
-              className={`p-3 rounded-xl border transition-all duration-300 ${
-                isActive 
-                  ? 'border-primary bg-primary/10 glow-sm' 
-                  : isCompleted 
-                    ? 'border-green-500/50 bg-green-500/10' 
-                    : 'border-border/30 bg-card/20'
-              }`}
-            >
-              <div className="text-2xl mb-1">{stage.icon}</div>
-              <div className="text-xs font-medium">{stage.label}</div>
-              {isActive && (
-                <div className="text-xs text-primary mt-1">Processing...</div>
-              )}
-              {isCompleted && (
-                <div className="text-xs text-green-400 mt-1">✓ Done</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-1000 ease-out rounded-full glow-sm"
+              style={{ width: `${status.progress_percentage}%` }}
+            />
+          </div>
+          
+          <div className="flex justify-between text-sm text-muted-foreground mb-6">
+            <span>{status.progress_percentage}% Complete</span>
+            <span>ETA: {status.estimated_time_remaining}</span>
+          </div>
+        </>
+      )}
+      
+      {/* Stage Indicators - Hide for validation failures */}
+      {!isValidationFailure && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+          {stages.map((stage) => {
+            const stageStatus = getStageStatus(stage.key);
+            const isActive = status.current_stage === stage.key;
+            const isCompleted = stageStatus === 'completed';
+            
+            return (
+              <div 
+                key={stage.key}
+                className={`p-3 rounded-xl border transition-all duration-300 ${
+                  isActive 
+                    ? 'border-primary bg-primary/10 glow-sm' 
+                    : isCompleted 
+                      ? 'border-green-500/50 bg-green-500/10' 
+                      : 'border-border/30 bg-card/20'
+                }`}
+              >
+                <div className="text-2xl mb-1">{stage.icon}</div>
+                <div className="text-xs font-medium">{stage.label}</div>
+                {isActive && (
+                  <div className="text-xs text-primary mt-1">Processing...</div>
+                )}
+                {isCompleted && (
+                  <div className="text-xs text-green-400 mt-1">✓ Done</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* Try Again Button for validation failures */}
+      {isValidationFailure && (
+        <div className="mt-6">
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-gradient-to-r from-primary to-accent text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
       
       <p className="text-sm text-muted-foreground mt-6">
         {status.next_action}

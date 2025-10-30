@@ -18,6 +18,7 @@ interface AuthContextType {
   signup: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   checkTokenValidity: () => Promise<boolean>;
+  updateProfile: (data: { full_name: string; email: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -169,13 +170,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return await tokenManager.validateToken();
   };
 
+  const updateProfile = async (data: { full_name: string; email: string }) => {
+    try {
+      const updatedUser = await api.auth.updateProfile(data);
+      setUser(updatedUser);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new Error(error.message);
+      }
+      throw new Error('Profile update failed');
+    }
+  };
+
   const contextValue = useMemo(() => ({
     user,
     loading,
     login,
     signup,
     logout,
-    checkTokenValidity
+    checkTokenValidity,
+    updateProfile
   }), [user, loading]);
 
   return (

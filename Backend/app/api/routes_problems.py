@@ -77,6 +77,21 @@ async def discover_problems(
                 domain=request.domain
             )
             
+            # Handle validation failures
+            if not keyword_result["success"] and keyword_result.get("validation_failed"):
+                # Update input status to failed
+                await UserInputService.update_input_status(
+                    user_id=current_user.id,
+                    input_id=input_response.input_id,
+                    status="failed"
+                )
+                
+                # Return validation error to user
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=keyword_result["error"]
+                )
+            
             if keyword_result["success"]:
                 logger.info(f"Successfully generated keywords for input {input_response.input_id}")
                 
@@ -194,6 +209,9 @@ async def discover_problems(
                 
             else:
                 logger.warning(f"Failed to generate keywords for input {input_response.input_id}: {keyword_result.get('error')}")
+        except HTTPException:
+            # Re-raise HTTPExceptions (like validation failures) to return proper error to frontend
+            raise
         except Exception as keyword_error:
             logger.error(f"Error generating keywords for input {input_response.input_id}: {str(keyword_error)}")
             # Don't fail the main request if keyword generation fails
@@ -229,44 +247,44 @@ async def discover_problems(
         
         return ProblemDiscoveryResponse(
             success=True,
-            message="🚀 Problem discovery initiated! Your AI assistant is getting to work...",
+            message="Problem discovery initiated. Processing your request...",
             request_id=request_id,
             timestamp=timestamp,
             data={
                 "status": "processing",
                 "current_stage": "keyword_generation" if not keyword_result else ("reddit_fetch" if reddit_posts_count == 0 else "embedding_generation"),
                 "progress_percentage": 10 if not keyword_result else (25 if reddit_posts_count == 0 else 40),
-                "interactive_message": "🔑 Generating smart keywords..." if not keyword_result else ("📡 Searching Reddit communities..." if reddit_posts_count == 0 else "🧠 AI analysis starting..."),
+                "interactive_message": "Generating keywords..." if not keyword_result else ("Searching communities..." if reddit_posts_count == 0 else "Starting AI analysis..."),
                 "animation": "startup",
                 "processing_stages": {
                     "keyword_generation": {
                         "status": "completed" if keyword_result and keyword_result.get("success") else "in_progress",
-                        "message": "✅ Keywords generated" if keyword_result and keyword_result.get("success") else "🔑 Generating keywords...",
-                        "icon": "🔑"
+                        "message": "Keywords generated" if keyword_result and keyword_result.get("success") else "Generating keywords...",
+                        "icon": "key"
                     },
                     "reddit_fetch": {
                         "status": reddit_fetch_status,
-                        "message": f"✅ {reddit_posts_count} posts found" if reddit_posts_count > 0 else "📡 Searching communities...",
-                        "icon": "📡"
+                        "message": f"{reddit_posts_count} posts found" if reddit_posts_count > 0 else "Searching communities...",
+                        "icon": "search"
                     },
                     "embedding_generation": {
                         "status": embedding_status,
-                        "message": "⏳ Waiting for posts" if reddit_posts_count == 0 else "🧠 AI analysis queued...",
-                        "icon": "🧠"
+                        "message": "Waiting for posts" if reddit_posts_count == 0 else "AI analysis queued...",
+                        "icon": "brain"
                     },
                     "semantic_filtering": {
                         "status": "pending",
-                        "message": "⏳ Waiting for analysis",
-                        "icon": "🎯"
+                        "message": "Waiting for analysis",
+                        "icon": "target"
                     }
                 },
                 "reddit_posts_found": reddit_posts_count,
                 "estimated_completion_time": "10-15 minutes" if reddit_posts_count > 0 else "Processing...",
                 "status_check_url": f"/processing-status/{request_id}",
                 "next_steps": [
-                    "✨ Check back in a few minutes for progress updates",
-                    "📊 Use the status endpoint to track real-time progress", 
-                    "🎯 Results will be available once processing completes"
+                    "Check back in a few minutes for progress updates",
+                    "Use the status endpoint to track real-time progress", 
+                    "Results will be available once processing completes"
                 ],
                 "search_parameters": request.dict()
             }
@@ -444,6 +462,39 @@ async def get_problem_results(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error getting results: {str(e)}"
+        )
+
+@router.post("/validate-input")
+async def validate_input(
+    request: ProblemDiscoveryRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Validate user input without processing it.
+    Useful for frontend validation before submitting the full request.
+    """
+    try:
+        logger.info(f"Validating input for user {current_user.id}")
+        
+        # Use the validation method from KeywordGenerationService
+        from app.services.keyword_generation_service import KeywordGenerationService
+        
+        validation_result = await KeywordGenerationService._validate_input(
+            problem_description=request.problemDescription,
+            domain=request.domain
+        )
+        
+        return {
+            "success": True,
+            "validation": validation_result,
+            "message": "Input validated successfully" if validation_result["is_valid"] else "Input validation failed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error validating input for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error validating input: {str(e)}"
         )
 
 @router.delete("/requests/{request_id}")

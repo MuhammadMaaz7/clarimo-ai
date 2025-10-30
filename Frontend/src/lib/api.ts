@@ -117,6 +117,12 @@ export const api = {
     me: () => apiRequest<any>('/auth/me'),
     
     validateToken: () => apiRequest<{ valid: boolean; user: any }>('/auth/validate-token'),
+    
+    updateProfile: (data: { full_name: string; email: string }) =>
+      apiRequest<{ id: string; email: string; full_name: string }>('/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
   },
 
   // Problem discovery endpoints
@@ -128,6 +134,25 @@ export const api = {
       targetAudience?: string;
     }) =>
       apiRequest<ApiResponse>('/problems/discover', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    validateInput: (data: {
+      problemDescription: string;
+      domain?: string;
+      region?: string;
+      targetAudience?: string;
+    }) =>
+      apiRequest<{
+        success: boolean;
+        validation: {
+          is_valid: boolean;
+          reason: string;
+          confidence?: number;
+        };
+        message: string;
+      }>('/problems/validate-input', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

@@ -37,3 +37,9 @@ UI better
 
 save the pain points in database
 and user should also able to see in UI profile or somewhere, what he input and pain points corresponsding which were generated
+
+input validation with prompt in keyword extraction
+laptop pay run kerna hai 
+demo k liye uske related runs kerne hain
+UI better, loading spinner shit
+use domain in filtering too

@@ -9,6 +9,7 @@ import { Search, Filter } from 'lucide-react';
 interface ProblemFormProps {
   onSubmit: (data: FormData) => void;
   isLoading: boolean;
+  compact?: boolean;
 }
 
 export interface FormData {
@@ -18,7 +19,7 @@ export interface FormData {
   targetAudience?: string;
 }
 
-const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
+const ProblemForm = ({ onSubmit, isLoading, compact = false }: ProblemFormProps) => {
   const [formData, setFormData] = useState<FormData>({
     problemDescription: '',
     domain: '',
@@ -61,15 +62,17 @@ const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
   };
 
   return (
-    <Card className="glass border-border/50">
-      <CardHeader>
-        <CardTitle className="text-2xl">Search Parameters</CardTitle>
-        <CardDescription className="text-base">
-          Describe the problem space you want to explore and set optional filters
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <Card className={`glass border-border/50 ${compact ? 'bg-white/3' : ''}`}>
+      {!compact && (
+        <CardHeader>
+          <CardTitle className="text-2xl">Search Parameters</CardTitle>
+          <CardDescription className="text-base">
+            Describe the problem space you want to explore and set optional filters
+          </CardDescription>
+        </CardHeader>
+      )}
+      <CardContent className={compact ? 'pt-6' : ''}>
+        <form onSubmit={handleSubmit} className={compact ? "space-y-4" : "space-y-6"}>
           {/* Problem Description */}
           <div className="space-y-2">
             <Label htmlFor="problem" className="text-base">Problem Description *</Label>
@@ -79,17 +82,18 @@ const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
               value={formData.problemDescription}
               onChange={(e) => handleChange('problemDescription', e.target.value)}
               placeholder="Describe the problems you want to discover (e.g., 'Small businesses struggling with customer management')"
-              className="min-h-[120px] resize-none glass border-border/50 focus:border-primary transition-all duration-300"
+              className={`${compact ? 'min-h-[80px]' : 'min-h-[120px]'} resize-none glass border-border/50 focus:border-primary transition-all duration-300`}
               required
             />
           </div>
 
           {/* Optional Context Fields */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Context</h3>
-            </div>
+          {!compact && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Context</h3>
+              </div>
 
             <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-3">
               {/* Domain */}
@@ -138,6 +142,7 @@ const ProblemForm = ({ onSubmit, isLoading }: ProblemFormProps) => {
               </div>
             </div>
           </div>
+          )}
 
           {/* Submit Button */}
           <Button
