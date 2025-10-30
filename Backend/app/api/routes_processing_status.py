@@ -56,8 +56,20 @@ async def get_processing_status(
         clusters_dir = Path("data/clusters") / current_user.id / input_id
         clustering_completed = (clusters_dir / "cluster_summary.json").exists()
         
+        # Check pain points extraction in dedicated directory
+        pain_points_dir = Path("data/pain_points") / current_user.id / input_id
+        pain_points_completed = (pain_points_dir / "marketable_pain_points_all.json").exists()
+        pain_points_count = 0
+        if pain_points_completed:
+            try:
+                with open(pain_points_dir / "marketable_pain_points_all.json", 'r', encoding='utf-8') as f:
+                    pain_points_data = json.load(f)
+                    pain_points_count = len(pain_points_data.get("pain_points", []))
+            except Exception:
+                pain_points_count = 0
+        
         # Determine current stage and create engaging messages
-        if clustering_completed:
+        if pain_points_completed:
             # All done including clustering!
             try:
                 with open(filtered_dir / "filtered_posts.json", 'r', encoding='utf-8') as f:
@@ -76,19 +88,58 @@ async def get_processing_status(
                 "overall_status": "completed",
                 "progress_percentage": 100,
                 "current_stage": "completed",
-                "message": "🎉 Problem discovery complete!",
-                "description": f"Found {filtered_count} problems organized into {clusters_count} themes",
+                "message": "🎉 Startup opportunities discovered!",
+                "description": f"Found {pain_points_count} marketable problems from {filtered_count} posts across {clusters_count} themes",
                 "animation": "celebration",
-                "next_action": "View your discovered problems and themes",
+                "next_action": "View your startup opportunities with real user evidence",
                 "stages": {
                     "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
                     "reddit_fetch": {"status": "completed", "message": f"✅ {reddit_posts_count} posts collected", "icon": "📡"},
                     "embedding_generation": {"status": "completed", "message": "✅ AI analysis complete", "icon": "🧠"},
                     "semantic_filtering": {"status": "completed", "message": f"✅ {filtered_count} problems discovered", "icon": "🎯"},
-                    "clustering": {"status": "completed", "message": f"✅ {clusters_count} themes identified", "icon": "🗂️"}
+                    "clustering": {"status": "completed", "message": f"✅ {clusters_count} themes identified", "icon": "🗂️"},
+                    "pain_points": {"status": "completed", "message": f"✅ {pain_points_count} opportunities found", "icon": "💡"}
                 },
                 "estimated_time_remaining": "0 minutes",
-                "can_view_results": True
+                "can_view_results": True,
+                "pain_points_available": True,
+                "pain_points_count": pain_points_count
+            }
+            
+        elif clustering_completed:
+            # Clustering done, pain points extraction in progress
+            try:
+                with open(filtered_dir / "filtered_posts.json", 'r', encoding='utf-8') as f:
+                    filtered_posts = json.load(f)
+                    filtered_count = len(filtered_posts)
+                
+                with open(clusters_dir / "cluster_summary.json", 'r', encoding='utf-8') as f:
+                    cluster_data = json.load(f)
+                    clusters_count = len(cluster_data.get("clusters", {}))
+            except Exception:
+                filtered_count = 0
+                clusters_count = 0
+                
+            return {
+                "input_id": input_id,
+                "overall_status": "extracting_pain_points",
+                "progress_percentage": 98,
+                "current_stage": "pain_points_extraction",
+                "message": "💡 Discovering startup opportunities...",
+                "description": f"AI is analyzing {clusters_count} problem themes to find marketable opportunities",
+                "animation": "analyzing",
+                "next_action": "Generating business-ready problem insights",
+                "stages": {
+                    "keyword_generation": {"status": "completed", "message": "✅ Keywords generated", "icon": "🔑"},
+                    "reddit_fetch": {"status": "completed", "message": f"✅ {reddit_posts_count} posts collected", "icon": "📡"},
+                    "embedding_generation": {"status": "completed", "message": "✅ AI analysis complete", "icon": "🧠"},
+                    "semantic_filtering": {"status": "completed", "message": f"✅ {filtered_count} problems discovered", "icon": "🎯"},
+                    "clustering": {"status": "completed", "message": f"✅ {clusters_count} themes identified", "icon": "🗂️"},
+                    "pain_points": {"status": "in_progress", "message": "💡 Finding opportunities...", "icon": "⚡"}
+                },
+                "estimated_time_remaining": "30 seconds",
+                "can_view_results": False,
+                "pain_points_available": False
             }
             
         elif filtering_completed:

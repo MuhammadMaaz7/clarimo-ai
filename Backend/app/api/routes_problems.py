@@ -179,8 +179,8 @@ async def discover_problems(
                             except Exception as embedding_error:
                                 logger.error(f"Background: Error generating embeddings for input {input_response.input_id}: {str(embedding_error)}")
                             finally:
-                                # Always release the lock
-                                await processing_lock_service.release_lock(current_user.id, input_response.input_id)
+                                # Lock will be released by clustering service after complete pipeline
+                                pass
                         
                         # Start background task without waiting
                         background_task = asyncio.create_task(background_embedding_task())

@@ -32,3 +32,6 @@ seaborn
 # Optional utilities (recommended)
 requests
 typing-extensions
+
+# Pain points extraction dependencies
+groq
