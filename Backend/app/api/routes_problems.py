@@ -136,11 +136,22 @@ async def discover_problems(
                                 user_id=current_user.id,
                                 input_id=input_response.input_id,
                                 query=request.problemDescription,
+                                domain=request.domain,
                                 top_k=500,
                                 similarity_threshold=0.55
                             )
                             if filtering_result["success"]:
                                 logger.info(f"Successfully filtered {filtering_result.get('filtered_documents', 0)} relevant posts for input {input_response.input_id}")
+                            else:
+                                logger.warning(f"Semantic filtering failed for input {input_response.input_id}: {filtering_result.get('message')}")
+                                
+                                # Update input status to indicate filtering failure
+                                await UserInputService.update_input_status(
+                                    user_id=current_user.id,
+                                    input_id=input_response.input_id,
+                                    status="failed",
+                                    error_message=filtering_result.get('message', 'Semantic filtering found no relevant posts')
+                                )
                         except Exception as e:
                             logger.error(f"Error in semantic filtering for input {input_response.input_id}: {str(e)}")
                     elif is_processing:
@@ -176,6 +187,7 @@ async def discover_problems(
                                             user_id=current_user.id,
                                             input_id=input_response.input_id,
                                             query=request.problemDescription,  # Use original user query
+                                            domain=request.domain,  # Include domain for better context
                                             top_k=500,  # Get top 500 candidates
                                             similarity_threshold=0.55  # Keep posts with similarity >= 0.55
                                         )
@@ -184,6 +196,14 @@ async def discover_problems(
                                             logger.info(f"Background: Successfully filtered {filtering_result.get('filtered_documents', 0)} relevant posts from {filtering_result.get('total_documents', 0)} total for input {input_response.input_id}")
                                         else:
                                             logger.warning(f"Background: Semantic filtering failed for input {input_response.input_id}: {filtering_result.get('message')}")
+                                            
+                                            # Update input status to indicate filtering failure
+                                            await UserInputService.update_input_status(
+                                                user_id=current_user.id,
+                                                input_id=input_response.input_id,
+                                                status="failed",
+                                                error_message=filtering_result.get('message', 'Semantic filtering found no relevant posts')
+                                            )
                                             
                                     except Exception as filtering_error:
                                         logger.error(f"Background: Error in semantic filtering for input {input_response.input_id}: {str(filtering_error)}")

@@ -79,6 +79,7 @@ class SemanticFilteringService:
         user_id: str,
         input_id: str,
         query: str,
+        domain: str = None,
         top_k: int = 500,
         similarity_threshold: float = 0.55
     ) -> Dict[str, Any]:
@@ -89,6 +90,7 @@ class SemanticFilteringService:
             user_id: User ID
             input_id: Input ID
             query: User query for semantic filtering
+            domain: Optional domain to enhance the query context
             top_k: Number of candidates to retrieve before filtering
             similarity_threshold: Minimum cosine similarity to keep
             
@@ -109,8 +111,22 @@ class SemanticFilteringService:
             
             # Load model and encode query
             self._load_model()
+            
+            # Enhance query with domain context if provided
+            enhanced_query = query
+            if domain and domain.strip():
+                # Check if domain is already in the query to avoid duplication
+                domain_phrase = f"in {domain.strip()} domain"
+                if domain_phrase not in query.lower():
+                    enhanced_query = f"{query} {domain_phrase}"
+                    logger.info(f"Enhanced query with domain context: '{enhanced_query}'")
+                else:
+                    logger.info(f"Domain already present in query, using as-is: '{query}'")
+            else:
+                logger.info(f"Using original query: '{query}'")
+            
             logger.info("Encoding user query...")
-            query_emb = self.model.encode([query], convert_to_numpy=True).astype('float32')
+            query_emb = self.model.encode([enhanced_query], convert_to_numpy=True).astype('float32')
             faiss.normalize_L2(query_emb)
             
             # Search for similar posts
@@ -148,6 +164,8 @@ class SemanticFilteringService:
             # Save filtering configuration for reference
             filtering_config = {
                 "query": query,
+                "domain": domain,
+                "enhanced_query": enhanced_query,
                 "top_k": top_k,
                 "similarity_threshold": similarity_threshold,
                 "total_documents": len(metadata),
@@ -191,9 +209,17 @@ class SemanticFilteringService:
                 "avg_similarity": float(np.mean([p["similarity_score"] for p in relevant_posts])) if relevant_posts else 0.0
             }
             
+            # Determine success based on results
+            is_successful = len(relevant_posts) > 0
+            
+            if len(relevant_posts) == 0:
+                message = f"No relevant posts found from {len(metadata)} total posts. This might indicate that the domain '{domain}' doesn't match the problem description, or the query is too specific. Try using a more general domain or rephrasing your problem description."
+            else:
+                message = f"Successfully filtered {len(relevant_posts)} relevant posts from {len(metadata)} total"
+            
             return {
-                "success": True,
-                "message": f"Successfully filtered {len(relevant_posts)} relevant posts from {len(metadata)} total",
+                "success": is_successful,
+                "message": message,
                 "total_documents": len(metadata),
                 "filtered_documents": len(relevant_posts),
                 "similarity_threshold": similarity_threshold,
@@ -204,7 +230,8 @@ class SemanticFilteringService:
                     "filtering_config": str(filtered_posts_dir / "filtering_config.json")
                 },
                 "filtered_posts_directory": str(filtered_posts_dir),
-                "query_used": query
+                "query_used": query,
+                "no_results": len(relevant_posts) == 0
             }
             
         except Exception as e:

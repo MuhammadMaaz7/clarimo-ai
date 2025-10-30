@@ -19,6 +19,7 @@ router = APIRouter(prefix="/semantic-filtering", tags=["Semantic Filtering"])
 
 class SemanticFilterRequest(BaseModel):
     query: str
+    domain: Optional[str] = None
     top_k: Optional[int] = 500
     similarity_threshold: Optional[float] = 0.55
 
@@ -50,6 +51,7 @@ async def filter_posts_semantically(
             user_id=current_user.id,
             input_id=input_id,
             query=request.query,
+            domain=request.domain,
             top_k=request.top_k,
             similarity_threshold=request.similarity_threshold
         )

@@ -77,7 +77,35 @@ class KeywordGenerationService:
         try:
             logger.info(f"Generating keywords for input {input_id} (user: {user_id})")
             
-            # Step 1: AI-powered validation BEFORE generating keywords
+            # Step 1: Pattern-based domain validation (fast rejection of obvious nonsense)
+            if domain and domain.strip():
+                def is_nonsensical_domain(domain_text: str) -> bool:
+                    domain_lower = domain_text.lower().replace(' ', '')
+                    patterns = [
+                        len(domain_text) < 3,  # Too short
+                        len(set(domain_lower)) < 3,  # Too few unique characters
+                        domain_lower in ['test', 'testing', 'abc', 'xyz', 'example', 'demo'],  # Common test words
+                        # Repeated character patterns (AAA, BBB, etc.)
+                        any(char * 3 in domain_lower for char in 'abcdefghijklmnopqrstuvwxyz'),
+                        # Keyboard patterns
+                        any(pattern in domain_lower for pattern in ['qwerty', 'asdf', 'zxcv', '123', 'abc']),
+                        # Random character sequences (more than 80% consonants or vowels)
+                        len(domain_lower) > 4 and (
+                            sum(1 for c in domain_lower if c in 'bcdfghjklmnpqrstvwxyz') / len(domain_lower) > 0.8 or
+                            sum(1 for c in domain_lower if c in 'aeiou') / len(domain_lower) > 0.8
+                        )
+                    ]
+                    return any(patterns)
+                
+                if is_nonsensical_domain(domain.strip()):
+                    logger.warning(f"Pattern validation failed for input {input_id}: Domain '{domain}' appears to be nonsensical")
+                    return {
+                        "success": False, 
+                        "error": f"Invalid domain '{domain}'. Please enter a real business/technology domain (e.g., 'fintech', 'e-commerce', 'healthcare').",
+                        "validation_failed": True
+                    }
+            
+            # Step 2: AI-powered validation for context and legitimacy
             validation_result = await cls._validate_input_with_ai(problem_description, domain)
             if not validation_result["is_valid"]:
                 logger.warning(f"AI validation failed for input {input_id}: {validation_result['reason']}")
@@ -202,7 +230,7 @@ class KeywordGenerationService:
             validation_text += f"\nDomain: {domain}"
         
         prompt = f"""
-        You are an input validator for a business problem discovery engine. Your job is to determine if user input describes a legitimate business, technical, or product-related problem that could lead to startup opportunities.
+        You are a STRICT input validator for a business problem discovery engine. Your job is to determine if user input describes a legitimate business, technical, or product-related problem that could lead to startup opportunities. BE VERY STRICT about domain validation - when in doubt, REJECT.
 
         USER INPUT:
         {validation_text}
@@ -226,19 +254,36 @@ class KeywordGenerationService:
         - Non-business related topics (personal relationships, entertainment preferences)
         - Test inputs (like "test", "testing", "abc123")
 
-        DOMAIN MATCHING (if domain provided):
-        - Check if the problem description relates to the specified domain
-        - If domain and problem don't match, mark as invalid
+        DOMAIN VALIDATION (if domain provided):
+        - Domain MUST be a REAL, RECOGNIZABLE business/technology domain
+        - IMMEDIATELY REJECT any domain that looks like:
+          * Random characters (HAFFUUU, XYZABC, HAFFFUUUU)
+          * Keyboard mashing (asdfgh, qwerty)
+          * Repeated letters (AAAAAAA, BBBBBBB)
+          * Test inputs (test, testing, abc123)
+          * Made-up words that don't exist in business context
+        - Domain must be a KNOWN industry term that people would recognize
+        - VALID examples: "fintech", "e-commerce", "healthcare", "SaaS", "mobile apps", "retail", "manufacturing"
+        - Look for patterns: repeated letters, random character sequences, keyboard patterns
+        - If you're unsure if a domain is real, REJECT IT
+        - If domain is invalid, mark the ENTIRE input as invalid and ABORT processing
+        - BE STRICT: Better to reject a questionable domain than allow nonsense through
 
         EXAMPLES:
-        ✅ Valid: "Small businesses struggle with inventory management"
-        ✅ Valid: "Developers waste time on repetitive deployment tasks"
-        ✅ Valid: "E-commerce checkout processes are too slow"
+        ✅ Valid: "Small businesses struggle with inventory management" + domain: "retail"
+        ✅ Valid: "Developers waste time on repetitive deployment tasks" + domain: "DevOps"
+        ✅ Valid: "E-commerce checkout processes are too slow" + domain: "e-commerce"
         ❌ Invalid: "My name is John Smith"
         ❌ Invalid: "I like pizza and movies"
         ❌ Invalid: "asdfghjkl random text"
         ❌ Invalid: "hello world"
         ❌ Invalid: "test testing 123"
+        ❌ Invalid: "Financial management problems" + domain: "HAFFUUU" (random characters - REJECT)
+        ❌ Invalid: "User interface issues" + domain: "XYZABC" (nonsensical - REJECT)
+        ❌ Invalid: "Payment processing slow" + domain: "HAFFFUUUU" (keyboard mashing - REJECT)
+        ❌ Invalid: "E-commerce issues" + domain: "AAAAAAA" (repeated letters - REJECT)
+        ❌ Invalid: "App problems" + domain: "qwerty123" (test input - REJECT)
+        ❌ Invalid: "Business challenges" + domain: "blahblah" (made-up word - REJECT)
 
         Return ONLY this JSON format (no other text):
         {{
@@ -416,6 +461,8 @@ class KeywordGenerationService:
             return {"potential_subreddits": [], "domain_anchors": [], "problem_phrases": []}
 
         domain_cleaned = re.sub(r'[^a-zA-Z0-9\s]', '', domain.strip())
+        
+        # Domain validation now happens earlier in the process
         
         # Get available API keys
         api_keys = cls._get_api_keys()
