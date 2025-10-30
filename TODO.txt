@@ -29,3 +29,11 @@ i will enter another input similar to it, not same, so we can test the embedding
 
 
 for testing, change first priority to semantic hits, so we can check if it is hitting semantically or not? working correctly or not?
+
+text color change
+display only problems
+remove upvotes
+UI better
+
+save the pain points in database
+and user should also able to see in UI profile or somewhere, what he input and pain points corresponsding which were generated

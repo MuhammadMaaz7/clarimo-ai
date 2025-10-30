@@ -162,6 +162,8 @@ export const api = {
         stages: Record<string, any>;
         estimated_time_remaining: string;
         can_view_results: boolean;
+        pain_points_available?: boolean;
+        pain_points_count?: number;
       }>(`/api/processing-status/${inputId}`),
     
     getAllProcessingStatus: () =>
@@ -260,6 +262,130 @@ export const api = {
       }>('/api/embeddings/cache/clear', {
         method: 'DELETE',
       }),
+  },
+
+  // Pain points endpoints
+  painPoints: {
+    extract: (data: {
+      input_id: string;
+      output_dir?: string;
+    }) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        total_clusters: number;
+        processed: number;
+        failed: number;
+        individual_files?: string[];
+        aggregated_file?: string;
+        pain_points_count?: number;
+      }>('/api/pain-points/extract', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    getResults: (inputId: string, includeDomains: boolean = false) =>
+      apiRequest<{
+        success: boolean;
+        metadata: {
+          total_clusters: number;
+          analysis_timestamp: number;
+          user_id: string;
+          input_id: string;
+        };
+        pain_points: Array<{
+          cluster_id: string;
+          problem_title: string;
+          problem_description: string;
+          post_references: Array<{
+            post_id: string;
+            subreddit: string;
+            created_utc: string;
+            url: string;
+            text: string;
+            title?: string;
+            score?: number;
+            num_comments?: number;
+          }>;
+          analysis_timestamp: number;
+          source: string;
+        }>;
+        total_pain_points: number;
+        domains?: Record<string, any>;
+      }>(`/api/pain-points/results/${inputId}${includeDomains ? '?include_domains=true' : ''}`),
+    
+    list: () =>
+      apiRequest<{
+        success: boolean;
+        pain_points_results: Array<{
+          input_id: string;
+          total_pain_points: number;
+          analysis_timestamp: number;
+          total_clusters: number;
+          file_path: string;
+        }>;
+        total_results: number;
+      }>('/api/pain-points/list'),
+    
+    getByDomain: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        input_id: string;
+        domains: Record<string, any[]>;
+        total_domains: number;
+        total_pain_points: number;
+      }>(`/api/pain-points/domains/${inputId}`),
+    
+    delete: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        deleted_files: string[];
+        files_deleted: number;
+      }>(`/api/pain-points/results/${inputId}`, {
+        method: 'DELETE',
+      }),
+    
+    triggerAuto: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        input_id: string;
+        status: string;
+      }>(`/api/pain-points/trigger-auto/${inputId}`, {
+        method: 'POST',
+      }),
+    
+    getHistory: (limit: number = 50) =>
+      apiRequest<{
+        success: boolean;
+        history: Array<{
+          input_id: string;
+          original_query: string;
+          pain_points_count: number;
+          total_clusters: number;
+          analysis_timestamp: string;
+          created_at: string;
+        }>;
+        total_items: number;
+      }>(`/api/pain-points/history?limit=${limit}`),
+    
+    getStats: () =>
+      apiRequest<{
+        success: boolean;
+        stats: {
+          total_analyses: number;
+          total_pain_points: number;
+          total_clusters: number;
+          latest_analysis: string | null;
+        };
+      }>('/api/pain-points/stats'),
+    
+    getAnalysisFromDB: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        analysis: any;
+      }>(`/api/pain-points/analysis/${inputId}`),
   },
 };
 

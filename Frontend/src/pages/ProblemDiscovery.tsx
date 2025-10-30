@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import ProblemForm, { FormData } from '../components/ProblemForm';
-import ProblemCard from '../components/ProblemCard';
+
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProcessingStatus from '../components/ProcessingStatus';
+import PainPointsDisplay from '../components/PainPointsDisplay';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api, ApiError } from '../lib/api';
@@ -27,15 +28,18 @@ interface ProcessingStatus {
   next_action: string;
   estimated_time_remaining: string;
   can_view_results: boolean;
+  pain_points_available?: boolean;
+  pain_points_count?: number;
 }
 
 const ProblemDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [, setCurrentRequestId] = useState<string | null>(null);
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus | null>(null);
   const [statusPollingInterval, setStatusPollingInterval] = useState<number | null>(null);
+  const [showPainPoints, setShowPainPoints] = useState(false);
   const { user } = useAuth();
 
   // Removed mock data - now uses real API responses only
@@ -82,6 +86,11 @@ const ProblemDiscovery = () => {
             }
           } catch (error) {
             console.error('Error fetching results:', error);
+          }
+
+          // Check if pain points are available
+          if (status.pain_points_available && status.pain_points_count && status.pain_points_count > 0) {
+            setShowPainPoints(true);
           }
 
           setIsLoading(false);
@@ -192,23 +201,18 @@ const ProblemDiscovery = () => {
       {/* Simple Loading for non-status cases */}
       {isLoading && !processingStatus && <LoadingSpinner size="lg" />}
 
-      {!isLoading && problems.length > 0 && (
+      {/* Pain Points Display - Priority Display */}
+      {!isLoading && showPainPoints && currentRequestId && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <h2 className="text-2xl md:text-3xl font-bold">Discovered Problems</h2>
-            <span className="text-sm md:text-base text-muted-foreground bg-accent/10 px-4 py-2 rounded-full border border-accent/20">
-              {problems.length} problems found
-            </span>
-          </div>
-          <div className="responsive-grid-cards">
-            {problems.map((problem, index) => (
-              <ProblemCard key={problem.id} {...problem} index={index} />
-            ))}
-          </div>
+          <PainPointsDisplay inputId={currentRequestId} />
         </div>
       )}
 
-      {!isLoading && hasSearched && problems.length === 0 && (
+
+
+
+
+      {!isLoading && hasSearched && !showPainPoints && (
         <div className="glass rounded-2xl border-dashed border-2 border-border/50 p-16 text-center">
           <p className="text-muted-foreground text-lg">
             No problems found. Try adjusting your search criteria.
