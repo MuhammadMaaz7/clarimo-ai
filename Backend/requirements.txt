@@ -1,3 +1,4 @@
+# Core backend
 fastapi
 uvicorn
 pymongo
@@ -6,8 +7,9 @@ passlib[bcrypt]
 python-multipart
 pydantic[email]
 python-dotenv
+praw
 
-# Embedding dependencies
+# Embedding & NLP dependencies
 sentence-transformers
 faiss-cpu
 langdetect
@@ -17,8 +19,19 @@ pandas
 numpy
 torch
 
-# Additional dependencies for semantic filtering
+# Machine learning & clustering
 scikit-learn
+umap-learn
+numba
+pynndescent
+
+# Visualization & analysis
+matplotlib
+seaborn
+
+# Optional utilities (recommended)
+requests
+typing-extensions
 
 # Pain points extraction dependencies
 groq
