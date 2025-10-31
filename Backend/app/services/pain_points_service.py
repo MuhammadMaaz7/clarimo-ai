@@ -261,12 +261,13 @@ Cluster data:
         original_query: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Extract pain points from existing cluster data.
+        Extract pain points from existing cluster data and automatically run ranking.
         
         Args:
             user_id: User identifier
             input_id: Input identifier
             output_dir: Optional output directory (defaults to clusters directory)
+            original_query: Original user query for database storage
         
         Returns:
             Dict containing results and structured pain point data
@@ -307,7 +308,6 @@ Cluster data:
                     current_stage=ProcessingStage.FAILED.value,
                     error_message=error_msg
                 )
-                await processing_lock_service.release_lock(user_id, input_id, completed=False)
                 
                 return {
                     "success": False,
@@ -484,25 +484,10 @@ Cluster data:
                 logger.error(f"Error saving pain points to database: {str(db_error)}")
                 # Don't fail the entire process if database save fails
 
-            # ✅ FIX: Update processing stage to COMPLETED and release lock
-            try:
-                await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.COMPLETED)
-                await UserInputService.update_input_status(
-                    user_id=user_id,
-                    input_id=input_id,
-                    status="completed",
-                    current_stage=ProcessingStage.COMPLETED.value
-                )
-                logger.info(f"Updated user input status to 'completed' for {input_id}")
-            except Exception as status_error:
-                logger.error(f"Error updating user input status: {str(status_error)}")
-
-            # ✅ FIX: Release lock after successful completion
-            try:
-                await processing_lock_service.release_lock(user_id, input_id, completed=True)
-                logger.info(f"Released processing lock after successful pain points extraction for {input_id}")
-            except Exception as lock_error:
-                logger.error(f"Error releasing processing lock: {str(lock_error)}")
+            # ✅ NOTE: Do NOT set status to completed here - ranking still needs to run
+            # Just update the stage timestamp to keep the process alive
+            await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.PAIN_POINTS_EXTRACTION)
+            logger.info(f"Pain points extraction completed, proceeding to ranking stage")
 
             logger.info(f"Pain points extraction complete!")
             logger.info(f"Total clusters: {results['total_clusters']}")
@@ -511,7 +496,7 @@ Cluster data:
             logger.info(f"Aggregated results: {results['aggregated_file']}")
             logger.info(f"Total pain points with post references: {len(all_pain_points['pain_points'])}")
             
-            # ✅ FIX: Return more detailed success information
+            # ✅ FIXED: Return more detailed success information
             return {
                 **results,
                 "pain_points_count": len(all_pain_points['pain_points']),
@@ -522,7 +507,7 @@ Cluster data:
         except Exception as e:
             logger.error(f"Error in pain points extraction: {str(e)}")
             
-            # ✅ FIX: Update database status on failure and release lock
+            # ✅ FIXED: Update database status on failure
             try:
                 await UserInputService.update_input_status(
                     user_id=user_id,
@@ -534,6 +519,7 @@ Cluster data:
             except Exception as status_error:
                 logger.error(f"Error updating failed status: {str(status_error)}")
             
+            # ✅ MUST release lock on failure since ranking won't run
             try:
                 await processing_lock_service.release_lock(user_id, input_id, completed=False)
             except Exception as lock_error:
@@ -551,16 +537,37 @@ Cluster data:
             }
     
     async def get_pain_points_results(self, user_id: str, input_id: str) -> Optional[Dict]:
-        """Load pain points results for a specific input."""
+        """Load pain points results for a specific input. Prefers ranked results if available."""
         try:
+            # First, try to load ranked results
+            ranking_dir = Path("data/rankings") / user_id / input_id
+            ranked_file = ranking_dir / "ranked_pain_points.json"
+            
+            if ranked_file.exists():
+                logger.info(f"Loading ranked pain points for {input_id}")
+                with open(ranked_file, "r", encoding="utf-8") as f:
+                    ranked_data = json.load(f)
+                
+                # Convert ranked format to expected format
+                return {
+                    "metadata": ranked_data.get("metadata", {}),
+                    "pain_points": ranked_data.get("ranked_pain_points", []),
+                    "ranking_metadata": ranked_data.get("ranking_metadata", {}),
+                    "is_ranked": True
+                }
+            
+            # Fall back to original pain points results
             pain_points_dir = Path("data/pain_points") / user_id / input_id
             results_file = pain_points_dir / "marketable_pain_points_all.json"
             
             if not results_file.exists():
                 return None
             
+            logger.info(f"Loading original (unranked) pain points for {input_id}")
             with open(results_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                data["is_ranked"] = False
+                return data
                 
         except Exception as e:
             logger.error(f"Error loading pain points results: {e}")

@@ -79,6 +79,20 @@ async def cluster_posts(
         
         if result["success"]:
             logger.info(f"Clustering completed: {result['clusters_found']} clusters from {result['total_posts']} posts")
+            
+            # ✅ FIXED: For manual clustering, release lock and set completion status
+            # Note: Manual clustering doesn't trigger pain points extraction automatically
+            try:
+                await UserInputService.update_input_status(
+                    user_id=current_user.id,
+                    input_id=request.input_id,
+                    status="completed",
+                    current_stage=ProcessingStage.COMPLETED.value
+                )
+                await processing_lock_service.release_lock(current_user.id, request.input_id, completed=True)
+                logger.info(f"Released processing lock after manual clustering for {request.input_id}")
+            except Exception as lock_error:
+                logger.error(f"Error releasing lock after manual clustering: {str(lock_error)}")
         else:
             logger.warning(f"Clustering failed: {result['message']}")
             # Release lock on failure

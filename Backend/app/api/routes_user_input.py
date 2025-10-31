@@ -230,9 +230,9 @@ async def process_user_input_background(
             
             performance_logger.finish_stage(input_id, "semantic_filtering", success=True, **filtering_metrics)
             
-            # Step 5: Clustering (this will also trigger pain points extraction)
-            performance_logger.start_stage(input_id, "clustering_and_pain_points")
-            logger.info(f"Starting clustering for input {input_id}")
+            # Step 5: Clustering, Pain Points Extraction, and Ranking
+            performance_logger.start_stage(input_id, "clustering_pain_points_ranking")
+            logger.info(f"Starting clustering, pain points extraction, and ranking for input {input_id}")
             from app.services.clustering_service import clustering_service
             
             clustering_result = await clustering_service.cluster_filtered_posts(
@@ -245,21 +245,22 @@ async def process_user_input_background(
             
             if not clustering_result["success"]:
                 error_msg = clustering_result.get('message', 'Unknown error')
-                performance_logger.finish_stage(input_id, "clustering_and_pain_points", success=False, error_message=error_msg)
+                performance_logger.finish_stage(input_id, "clustering_pain_points_ranking", success=False, error_message=error_msg)
                 raise Exception(f"Clustering failed: {error_msg}")
             
-            logger.info(f"Successfully completed clustering and pain points extraction for input {input_id}")
+            logger.info(f"Successfully completed clustering, pain points extraction, and ranking for input {input_id}")
             
-            # Clustering and pain points metrics
+            # Clustering, pain points, and ranking metrics
             clustering_metrics = {
                 "total_posts_clustered": clustering_result.get("total_posts", 0),
                 "clusters_found": clustering_result.get("clusters_found", 0),
                 "clustered_posts": clustering_result.get("clustered_posts", 0),
                 "noise_posts": clustering_result.get("noise_posts", 0),
-                "pain_points_extraction_success": clustering_result.get("pain_points_extraction_success", False)
+                "pain_points_extraction_success": clustering_result.get("pain_points_extraction_success", False),
+                "ranking_success": clustering_result.get("ranking_success", False)
             }
             
-            performance_logger.finish_stage(input_id, "clustering_and_pain_points", success=True, **clustering_metrics)
+            performance_logger.finish_stage(input_id, "clustering_pain_points_ranking", success=True, **clustering_metrics)
             
             # Finish pipeline tracking
             performance_logger.finish_pipeline(input_id, success=True)

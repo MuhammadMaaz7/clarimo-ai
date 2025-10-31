@@ -35,6 +35,8 @@ interface PainPointsData {
     input_id: string;
   };
   pain_points: PainPoint[];
+  is_ranked?: boolean;
+  ranking_metadata?: any;
 }
 
 interface PainPointsDisplayProps {
@@ -55,11 +57,11 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // ✅ FIXED: Use api client instead of direct fetch
       const data = await api.painPoints.getResults(inputId, false);
       setPainPointsData(data);
-      
+
     } catch (err) {
       console.error('Error fetching pain points:', err);
       if (err instanceof ApiError) {
@@ -130,9 +132,17 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
             <AlertCircle className="h-8 w-8 text-blue-400" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">Problems Discovered</h2>
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="text-2xl font-bold text-white">Problems Discovered</h2>
+              {painPointsData.is_ranked && (
+                <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs font-medium rounded border border-green-500/30">
+                  Ranked by Quality
+                </span>
+              )}
+            </div>
             <p className="text-gray-300">
               {painPointsData.pain_points.length} real user problems identified from online discussions
+              {painPointsData.is_ranked && " • Sorted by business potential"}
             </p>
           </div>
         </div>
@@ -142,10 +152,10 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
       <div className="space-y-4">
         {painPointsData.pain_points.map((painPoint) => {
           const isExpanded = expandedCards.has(painPoint.cluster_id);
-          
+
           return (
-            <Card 
-              key={painPoint.cluster_id} 
+            <Card
+              key={painPoint.cluster_id}
               className="bg-white/5 backdrop-blur-sm border-white/10 hover:bg-white/10 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10"
             >
               <CardHeader className="pb-4">
@@ -189,8 +199,8 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
                       </div>
                       <div className="space-y-3">
                         {painPoint.post_references.map((post) => (
-                          <div 
-                            key={post.post_id} 
+                          <div
+                            key={post.post_id}
                             className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors"
                           >
                             <div className="flex items-center justify-between mb-3">

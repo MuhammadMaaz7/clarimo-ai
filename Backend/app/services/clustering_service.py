@@ -494,6 +494,7 @@ class ClusteringService:
             
             # ✅ FIX: Wait for pain points extraction to complete before returning
             pain_points_success = False
+            ranking_success = False
             try:
                 logger.info(f"Starting automatic pain points extraction for input {input_id}")
                 from app.services.pain_points_service import pain_points_service
@@ -508,6 +509,27 @@ class ClusteringService:
                 if pain_points_success:
                     pain_points_count = len(pain_points_result["pain_points_data"]["pain_points"]) if pain_points_result["pain_points_data"] else 0
                     logger.info(f"Automatic pain points extraction completed: {pain_points_count} pain points generated")
+                    
+                    # ✅ NEW: Start ranking after pain points extraction
+                    try:
+                        logger.info(f"Starting automatic ranking for input {input_id}")
+                        from app.services.ranking_service import ranking_service
+                        
+                        ranking_result = await ranking_service.rank_pain_points(
+                            user_id=user_id,
+                            input_id=input_id
+                        )
+                        
+                        ranking_success = ranking_result["success"]
+                        if ranking_success:
+                            logger.info(f"Automatic ranking completed successfully")
+                        else:
+                            logger.warning(f"Automatic ranking failed: {ranking_result.get('message', 'Unknown error')}")
+                            
+                    except Exception as ranking_error:
+                        logger.error(f"Error in automatic ranking: {str(ranking_error)}")
+                        # Don't fail the pipeline if ranking fails
+                        
                 else:
                     logger.warning(f"Automatic pain points extraction failed: {pain_points_result.get('error', 'Unknown error')}")
                     
@@ -516,24 +538,26 @@ class ClusteringService:
                 # Don't fail the clustering if pain points extraction fails
             
             # ✅ FIX: Update database status after complete pipeline
-            try:
-                final_status = "completed" if pain_points_success else "completed_with_warnings"
-                await UserInputService.update_input_status(
-                    user_id=user_id,
-                    input_id=input_id,
-                    status=final_status,
-                    current_stage=ProcessingStage.COMPLETED.value
-                )
-                logger.info(f"Updated database status to '{final_status}' for input {input_id}")
-            except Exception as status_error:
-                logger.error(f"Error updating database status: {str(status_error)}")
-            
-            # ✅ FIX: Release lock only after ALL processing is complete
-            try:
-                await processing_lock_service.release_lock(user_id, input_id, completed=pain_points_success)
-                logger.info(f"Released processing lock after complete pipeline for {input_id}")
-            except Exception as lock_error:
-                logger.error(f"Error releasing processing lock: {str(lock_error)}")
+            # Note: Status and lock release are now handled by ranking_service
+            # Only update here if ranking was not attempted
+            if not pain_points_success:
+                try:
+                    await UserInputService.update_input_status(
+                        user_id=user_id,
+                        input_id=input_id,
+                        status="completed_with_warnings",
+                        current_stage=ProcessingStage.COMPLETED.value
+                    )
+                    logger.info(f"Updated database status to 'completed_with_warnings' for input {input_id}")
+                except Exception as status_error:
+                    logger.error(f"Error updating database status: {str(status_error)}")
+                
+                # Release lock if ranking was not attempted
+                try:
+                    await processing_lock_service.release_lock(user_id, input_id, completed=False)
+                    logger.info(f"Released processing lock after clustering failure for {input_id}")
+                except Exception as lock_error:
+                    logger.error(f"Error releasing processing lock: {str(lock_error)}")
             
             return {
                 "success": True,
@@ -550,7 +574,8 @@ class ClusteringService:
                     "visualization": visualization_path
                 },
                 "clusters_directory": str(clusters_dir),
-                "pain_points_extraction_success": pain_points_success
+                "pain_points_extraction_success": pain_points_success,
+                "ranking_success": ranking_success
             }
             
         except Exception as e:

@@ -100,6 +100,19 @@ async def extract_pain_points(
             pain_points_count = len(result["pain_points_data"]["pain_points"]) if result["pain_points_data"] else 0
             logger.info(f"Pain points extraction completed: {pain_points_count} pain points from {result['total_clusters']} clusters")
             
+            # ✅ FIXED: For manual extraction, we need to release the lock and set completion status
+            try:
+                await UserInputService.update_input_status(
+                    user_id=current_user.id,
+                    input_id=request.input_id,
+                    status="completed",
+                    current_stage=ProcessingStage.COMPLETED.value
+                )
+                await processing_lock_service.release_lock(current_user.id, request.input_id, completed=True)
+                logger.info(f"Released processing lock after manual pain points extraction for {request.input_id}")
+            except Exception as lock_error:
+                logger.error(f"Error releasing lock after manual extraction: {str(lock_error)}")
+            
             return PainPointsResponse(
                 success=True,
                 message=f"Successfully extracted {pain_points_count} pain points from {result['total_clusters']} clusters",
@@ -334,11 +347,34 @@ async def auto_extract_pain_points(user_id: str, input_id: str):
         if result["success"]:
             pain_points_count = len(result["pain_points_data"]["pain_points"]) if result["pain_points_data"] else 0
             logger.info(f"Automatic pain points extraction completed: {pain_points_count} pain points")
+            
+            # ✅ FIXED: For background task, we need to release the lock and set completion status
+            try:
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="completed",
+                    current_stage=ProcessingStage.COMPLETED.value
+                )
+                await processing_lock_service.release_lock(user_id, input_id, completed=True)
+                logger.info(f"Released processing lock after automatic pain points extraction for {input_id}")
+            except Exception as lock_error:
+                logger.error(f"Error releasing lock after automatic extraction: {str(lock_error)}")
         else:
             logger.warning(f"Automatic pain points extraction failed: {result.get('error', 'Unknown error')}")
+            # Release lock on failure
+            try:
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
+            except Exception as lock_error:
+                logger.error(f"Error releasing lock on failure: {str(lock_error)}")
             
     except Exception as e:
         logger.error(f"Error in automatic pain points extraction: {str(e)}")
+        # Release lock on exception
+        try:
+            await processing_lock_service.release_lock(user_id, input_id, completed=False)
+        except Exception as lock_error:
+            logger.error(f"Error releasing lock on exception: {str(lock_error)}")
 
 @router.post("/trigger-auto/{input_id}")
 async def trigger_auto_pain_points_extraction(

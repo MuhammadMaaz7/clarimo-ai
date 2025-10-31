@@ -17,6 +17,7 @@ class ProcessingStage(Enum):
     SEMANTIC_FILTERING = "semantic_filtering"
     CLUSTERING = "clustering"
     PAIN_POINTS_EXTRACTION = "pain_points_extraction"
+    RANKING = "ranking"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -119,7 +120,8 @@ class ProcessingLockService:
             ProcessingStage.EMBEDDINGS: 20,
             ProcessingStage.SEMANTIC_FILTERING: 4,
             ProcessingStage.CLUSTERING: 5,
-            ProcessingStage.PAIN_POINTS_EXTRACTION: 5,
+            ProcessingStage.PAIN_POINTS_EXTRACTION: 8,  # Increased for pain points + ranking
+            ProcessingStage.RANKING: 5,           # Ranking can take a bit longer
             ProcessingStage.COMPLETED: 0,         # Completed processes aren't stuck
             ProcessingStage.FAILED: 0,            # Failed processes aren't stuck
         }

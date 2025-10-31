@@ -26,7 +26,7 @@ async function apiRequest<T = any>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = localStorage.getItem('auth_token');
-  
+
   // Record API activity for session management
   try {
     const { getTokenManager } = await import('../services/TokenManager');
@@ -36,7 +36,7 @@ async function apiRequest<T = any>(
     // Silently fail if TokenManager is not available
     console.debug('TokenManager not available for activity recording');
   }
-  
+
   const config: RequestInit = {
     ...options,
     headers: {
@@ -48,26 +48,26 @@ async function apiRequest<T = any>(
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    
+
     // Handle token expiration
     if (response.status === 401) {
       const isTokenExpired = response.headers.get('x-token-expired') === 'true';
-      
+
       if (isTokenExpired || token) {
         // Clear expired token
         localStorage.removeItem('auth_token');
-        
+
         // Dispatch custom event for components to listen to
         globalThis.dispatchEvent(new CustomEvent('auth:token-expired'));
-        
+
         // Redirect to login after a short delay
         setTimeout(() => {
           globalThis.location.href = '/login';
         }, 100);
-        
+
         throw new ApiError('Your session has expired. Please log in again.', 401, true);
       }
-      
+
       throw new ApiError('Unauthorized access', 401, false);
     }
 
@@ -84,7 +84,7 @@ async function apiRequest<T = any>(
     if (error instanceof ApiError) {
       throw error;
     }
-    
+
     // Network or other errors
     console.error('API Request failed:', error);
     throw new ApiError('Network error. Please check your connection.', 0);
@@ -102,17 +102,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
-    
+
     signup: (email: string, password: string, full_name: string) =>
       apiRequest<{ access_token: string; user: any }>('/auth/signup', {
         method: 'POST',
         body: JSON.stringify({ email, password, full_name }),
       }),
-    
+
     me: () => apiRequest<any>('/auth/me'),
-    
+
     validateToken: () => apiRequest<{ valid: boolean; user: any }>('/auth/validate-token'),
-    
+
     updateProfile: (data: { full_name: string; email: string }) =>
       apiRequest<{ id: string; email: string; full_name: string }>('/auth/profile', {
         method: 'PUT',
@@ -142,7 +142,7 @@ export const api = {
           target_audience: data.targetAudience,
         }),
       }),
-    
+
     getAll: () =>
       apiRequest<Array<{
         _id: string;
@@ -154,15 +154,15 @@ export const api = {
         created_at: string;
         updated_at: string;
       }>>('/user-inputs/'),
-    
+
     getById: (inputId: string) =>
       apiRequest<any>(`/user-inputs/${inputId}`),
-    
+
     delete: (inputId: string) =>
       apiRequest<{ success: boolean; message: string }>(`/user-inputs/${inputId}`, {
         method: 'DELETE',
       }),
-    
+
     deleteAnalysis: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -174,7 +174,7 @@ export const api = {
       }>(`/user-input/${inputId}/analysis`, {
         method: 'DELETE',
       }),
-    
+
     deleteComplete: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -210,7 +210,7 @@ export const api = {
           target_audience: data.targetAudience,
         }),
       }),
-    
+
     validateInput: (data: {
       problemDescription: string;
       domain?: string;
@@ -254,7 +254,7 @@ export const api = {
         pain_points_available?: boolean;
         pain_points_count?: number;
       }>(`/processing-status/${inputId}`),  // ✅ Fixed: removed /api prefix
-    
+
     getAllProcessingStatus: () =>
       apiRequest<{
         processing_status: any[];
@@ -277,7 +277,7 @@ export const api = {
       }>(`/keywords/generate/${inputId}`, {
         method: 'POST',
       }),
-    
+
     getResults: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -310,7 +310,7 @@ export const api = {
       }>(`/reddit/fetch/${inputId}`, {
         method: 'POST',
       }),
-    
+
     getResults: (inputId: string) =>
       apiRequest<any>(`/reddit/results/${inputId}`),
   },
@@ -327,7 +327,7 @@ export const api = {
       }>(`/embeddings/generate/${inputId}?use_gpu=${useGpu}&batch_size=${batchSize}`, {
         method: 'POST',
       }),
-    
+
     getDetails: (inputId: string) =>
       apiRequest<{
         input_id: string;
@@ -341,7 +341,7 @@ export const api = {
         }>;
         total_files: number;
       }>(`/embeddings/${inputId}`),
-    
+
     list: () =>
       apiRequest<{
         embeddings: Array<{
@@ -353,7 +353,7 @@ export const api = {
         }>;
         total_embeddings: number;
       }>('/embeddings/'),
-    
+
     delete: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -395,7 +395,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    
+
     getResults: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -405,7 +405,7 @@ export const api = {
         files: Record<string, string>;
         directory: string;
       }>(`/semantic-filtering/${inputId}`),
-    
+
     list: () =>
       apiRequest<{
         filtered_results: Array<{
@@ -425,7 +425,7 @@ export const api = {
         }>;
         total_results: number;
       }>('/semantic-filtering/'),
-    
+
     delete: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -459,7 +459,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    
+
     getClusterResults: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -471,14 +471,14 @@ export const api = {
         files: Record<string, string>;
         directory: string;
       }>(`/clustering/results/${inputId}`),  // ✅ Fixed: removed /api prefix
-    
+
     listClusterResults: () =>
       apiRequest<{
         success: boolean;
         cluster_results: any[];
         total_results: number;
       }>('/clustering/list'),  // ✅ Fixed: removed /api prefix
-    
+
     deleteClusterResults: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -487,7 +487,7 @@ export const api = {
       }>(`/clustering/results/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'DELETE',
       }),
-    
+
     triggerAutoClustering: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -518,7 +518,7 @@ export const api = {
           tiers: Record<string, string>;
         };
       }>('/embeddings/cache/stats'),  // ✅ Fixed: corrected endpoint
-    
+
     clear: (cacheType: string = 'all') =>
       apiRequest<{
         success: boolean;
@@ -526,6 +526,63 @@ export const api = {
         embeddings_removed: number;
         space_freed_mb: number;
       }>(`/embeddings/cache/clear?cache_type=${cacheType}`, {  // ✅ Fixed: corrected endpoint
+        method: 'DELETE',
+      }),
+  },
+
+  // Ranking endpoints - NEW
+  ranking: {
+    rank: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        ranked_pain_points: any[];
+        ranking_metadata: any;
+        output_file: string;
+      }>(`/ranking/rank/${inputId}`, {
+        method: 'POST',
+      }),
+
+    getResults: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        input_id: string;
+        ranked_pain_points: any[];
+        ranking_metadata: any;
+        total_pain_points: number;
+      }>(`/ranking/results/${inputId}`),
+
+    getStatus: (inputId: string) =>
+      apiRequest<{
+        input_id: string;
+        is_processing: boolean;
+        current_stage: string | null;
+        is_ranking_stage: boolean;
+        has_results: boolean;
+        ranking_info: any;
+      }>(`/ranking/status/${inputId}`),
+
+    list: () =>
+      apiRequest<{
+        success: boolean;
+        ranking_results: Array<{
+          input_id: string;
+          total_pain_points: number;
+          ranked_at: string;
+          weights_used: any;
+          include_optional: boolean;
+          model_used: string;
+          file_path: string;
+        }>;
+        total_results: number;
+      }>('/ranking/list'),
+
+    delete: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        deleted_directory: string;
+      }>(`/ranking/results/${inputId}`, {
         method: 'DELETE',
       }),
   },
@@ -551,7 +608,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    
+
     getResults: (inputId: string, includeDomains: boolean = false) =>
       apiRequest<{
         success: boolean;
@@ -583,7 +640,7 @@ export const api = {
         total_pain_points: number;
         domains?: Record<string, any>;
       }>(`/pain-points/results/${inputId}?include_domains=${includeDomains}`),  // ✅ Fixed: removed /api prefix
-    
+
     list: () =>
       apiRequest<{
         success: boolean;
@@ -596,7 +653,7 @@ export const api = {
         }>;
         total_results: number;
       }>('/pain-points/list'),  // ✅ Fixed: removed /api prefix
-    
+
     getByDomain: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -605,7 +662,7 @@ export const api = {
         total_domains: number;
         total_pain_points: number;
       }>(`/pain-points/domains/${inputId}`),  // ✅ Fixed: removed /api prefix
-    
+
     delete: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -615,7 +672,7 @@ export const api = {
       }>(`/pain-points/results/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'DELETE',
       }),
-    
+
     triggerAuto: (inputId: string) =>
       apiRequest<{
         success: boolean;
@@ -625,7 +682,7 @@ export const api = {
       }>(`/pain-points/trigger-auto/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'POST',
       }),
-    
+
     getHistory: (limit: number = 50) =>
       apiRequest<{
         success: boolean;
@@ -639,7 +696,7 @@ export const api = {
         }>;
         total_items: number;
       }>(`/pain-points/history?limit=${limit}`),  // ✅ Fixed: removed /api prefix
-    
+
     getStats: () =>
       apiRequest<{
         success: boolean;
@@ -650,7 +707,7 @@ export const api = {
           latest_analysis: string | null;
         };
       }>('/pain-points/stats'),  // ✅ Fixed: removed /api prefix
-    
+
     getAnalysisFromDB: (inputId: string) =>
       apiRequest<{
         success: boolean;
