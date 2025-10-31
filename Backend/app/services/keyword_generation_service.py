@@ -12,6 +12,8 @@ import uuid
 
 from app.db.database import generated_keywords_collection
 from app.core.config import settings
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
 import os
 
 # Configure logging
@@ -77,6 +79,10 @@ class KeywordGenerationService:
         try:
             logger.info(f"Generating keywords for input {input_id} (user: {user_id})")
             
+            # Update processing stage
+            await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.KEYWORD_GENERATION)
+            await UserInputService.update_processing_stage(user_id, input_id, ProcessingStage.KEYWORD_GENERATION.value)
+            
             # Step 1: Pattern-based domain validation (fast rejection of obvious nonsense)
             if domain and domain.strip():
                 def is_nonsensical_domain(domain_text: str) -> bool:
@@ -99,6 +105,14 @@ class KeywordGenerationService:
                 
                 if is_nonsensical_domain(domain.strip()):
                     logger.warning(f"Pattern validation failed for input {input_id}: Domain '{domain}' appears to be nonsensical")
+                    # Update status to failed
+                    await UserInputService.update_input_status(
+                        user_id=user_id,
+                        input_id=input_id,
+                        status="failed",
+                        current_stage=ProcessingStage.FAILED.value,
+                        error_message=f"Invalid domain '{domain}'. Please enter a real business/technology domain."
+                    )
                     return {
                         "success": False, 
                         "error": f"Invalid domain '{domain}'. Please enter a real business/technology domain (e.g., 'fintech', 'e-commerce', 'healthcare').",
@@ -109,6 +123,14 @@ class KeywordGenerationService:
             validation_result = await cls._validate_input_with_ai(problem_description, domain)
             if not validation_result["is_valid"]:
                 logger.warning(f"AI validation failed for input {input_id}: {validation_result['reason']}")
+                # Update status to failed
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=validation_result["reason"]
+                )
                 return {
                     "success": False, 
                     "error": validation_result["reason"],
@@ -125,6 +147,14 @@ class KeywordGenerationService:
             
             if not keywords_data:
                 logger.warning(f"No keywords generated for input {input_id}")
+                # Update status to failed
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message="Failed to generate keywords"
+                )
                 return {"success": False, "error": "Failed to generate keywords"}
             
             # Create database document
@@ -169,8 +199,21 @@ class KeywordGenerationService:
         except Exception as e:
             logger.error(f"Error generating keywords for input {input_id}: {str(e)}")
             
+            # Update status to failed
+            try:
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=str(e)
+                )
+            except Exception as update_error:
+                logger.error(f"Failed to update user input status: {str(update_error)}")
+            
             # Store error status in database
             try:
+                search_text = domain if domain and domain.strip() else problem_description
                 error_doc = {
                     "user_id": user_id,
                     "input_id": input_id,
@@ -736,5 +779,4 @@ class KeywordGenerationService:
             
         except Exception as e:
             logger.error(f"Error deleting keywords for input {input_id}: {str(e)}")
-
-
+            return False

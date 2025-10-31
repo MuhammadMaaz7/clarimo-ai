@@ -1,6 +1,7 @@
 """
 Semantic Filtering Service - Filter Reddit posts using semantic similarity
 """
+import asyncio
 import json
 import logging
 import numpy as np
@@ -11,6 +12,10 @@ from tqdm import tqdm
 import pandas as pd
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+
+# Import processing lock service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +38,7 @@ class SemanticFilteringService:
     def _load_model(self):
         """Load the global model singleton - shared across all services"""
         if self.model is None:
-            from .embedding_service import get_global_model
+            from app.services.embedding_service import get_global_model
             logger.info(f"🧠 Getting global model singleton for semantic filtering...")
             self.model = get_global_model(use_gpu=False)  # Use CPU for filtering
             
@@ -99,12 +104,45 @@ class SemanticFilteringService:
         """
         try:
             logger.info(f"Starting semantic filtering for input {input_id} (user: {user_id})")
+            
+            # Check if process is already running and update stage
+            if not await processing_lock_service.is_processing(user_id, input_id):
+                logger.warning(f"Process {user_id}:{input_id} not found in active processes")
+                return {
+                    "success": False,
+                    "message": "Process not found or not in progress",
+                    "total_documents": 0,
+                    "filtered_documents": 0
+                }
+            
+            # Update processing stage to SEMANTIC_FILTERING
+            await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.SEMANTIC_FILTERING)
+            await UserInputService.update_processing_stage(user_id, input_id, ProcessingStage.SEMANTIC_FILTERING.value)
+            
             logger.info(f"Query: '{query}', top_k: {top_k}, threshold: {similarity_threshold}")
             
             # Find embeddings directory
             embeddings_dir = Path("data/embeddings") / user_id / input_id
             if not embeddings_dir.exists():
-                raise FileNotFoundError(f"Embeddings directory not found: {embeddings_dir}")
+                error_msg = f"Embeddings directory not found: {embeddings_dir}"
+                logger.error(error_msg)
+                
+                # Update status and release lock on error
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=error_msg
+                )
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
+                
+                return {
+                    "success": False,
+                    "message": error_msg,
+                    "total_documents": 0,
+                    "filtered_documents": 0
+                }
             
             # Load FAISS index and metadata
             index, metadata, emb_matrix = self._load_index_and_metadata(embeddings_dir)
@@ -181,27 +219,6 @@ class SemanticFilteringService:
             logger.info(f"Filtered posts saved to {filtered_posts_path}")
             logger.info(f"Filtering config saved to {config_path}")
             
-            # Trigger automatic clustering if we have enough posts
-            if len(relevant_posts) >= 5:
-                try:
-                    logger.info("Triggering automatic clustering after filtering...")
-                    from app.services.clustering_service import clustering_service
-                    
-                    # Run clustering in background (don't wait for completion)
-                    import asyncio
-                    asyncio.create_task(clustering_service.cluster_filtered_posts(
-                        user_id=user_id,
-                        input_id=input_id,
-                        create_visualization=True,
-                        original_query=query  # Pass the original query through
-                    ))
-                    
-                    logger.info("Automatic clustering task started")
-                except Exception as e:
-                    logger.warning(f"Failed to start automatic clustering: {str(e)}")
-            else:
-                logger.info(f"Skipping clustering - too few posts ({len(relevant_posts)})")
-            
             # Create summary statistics
             similarity_stats = {
                 "min_similarity": float(min([p["similarity_score"] for p in relevant_posts])) if relevant_posts else 0.0,
@@ -217,6 +234,10 @@ class SemanticFilteringService:
             else:
                 message = f"Successfully filtered {len(relevant_posts)} relevant posts from {len(metadata)} total"
             
+            # Note: Clustering will be handled by the main pipeline, not automatically triggered here
+            logger.info(f"Semantic filtering completed successfully. Found {len(relevant_posts)} relevant posts.")
+            logger.info("Clustering will be handled by the main processing pipeline.")
+            
             return {
                 "success": is_successful,
                 "message": message,
@@ -231,11 +252,26 @@ class SemanticFilteringService:
                 },
                 "filtered_posts_directory": str(filtered_posts_dir),
                 "query_used": query,
-                "no_results": len(relevant_posts) == 0
+                "no_results": len(relevant_posts) == 0,
+                "clustering_triggered": len(relevant_posts) >= 5
             }
             
         except Exception as e:
             logger.error(f"Error in semantic filtering: {str(e)}")
+            
+            # Update status and release lock on error
+            try:
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=f"Semantic filtering failed: {str(e)}"
+                )
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
+            except Exception as update_error:
+                logger.error(f"Error updating failed status: {str(update_error)}")
+            
             return {
                 "success": False,
                 "message": f"Semantic filtering failed: {str(e)}",

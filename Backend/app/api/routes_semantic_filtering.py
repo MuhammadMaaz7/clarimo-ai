@@ -1,7 +1,7 @@
 """
 Semantic Filtering API Routes
 """
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
@@ -10,6 +10,8 @@ from pathlib import Path
 from app.db.models.user_model import UserResponse
 from app.core.security import get_current_user
 from app.services.semantic_filtering_service import semantic_filtering_service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,9 +40,30 @@ async def filter_posts_semantically(
     try:
         logger.info(f"Manual semantic filtering requested for input {input_id} by user {current_user.id}")
         
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, input_id, ProcessingStage.SEMANTIC_FILTERING)
+        await UserInputService.update_processing_stage(current_user.id, input_id, ProcessingStage.SEMANTIC_FILTERING.value)
+        
         # Check if embeddings exist for this input
         embeddings_dir = Path("data/embeddings") / current_user.id / input_id
         if not embeddings_dir.exists():
+            # Release lock if no embeddings found
+            await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No embeddings found for this input. Generate embeddings first."
@@ -58,6 +81,7 @@ async def filter_posts_semantically(
         
         if result["success"]:
             logger.info(f"Manual semantic filtering completed for input {input_id}")
+            # Don't release lock here - let the pipeline continue to clustering
             return {
                 "success": True,
                 "message": result["message"],
@@ -66,19 +90,26 @@ async def filter_posts_semantically(
                 "similarity_threshold": result["similarity_threshold"],
                 "similarity_stats": result["similarity_stats"],
                 "output_files": result["output_files"],
-                "query_used": result["query_used"]
+                "query_used": result["query_used"],
+                "clustering_triggered": result.get("clustering_triggered", False)
             }
         else:
             logger.error(f"Manual semantic filtering failed for input {input_id}: {result.get('message')}")
+            # Release lock on failure
+            await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Semantic filtering failed: {result.get('message')}"
             )
         
     except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
         raise
     except Exception as e:
         logger.error(f"Error in manual semantic filtering for input {input_id}: {str(e)}")
+        # Release lock on other exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to filter posts: {str(e)}"
@@ -232,4 +263,93 @@ async def delete_filtered_results(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete filtered results: {str(e)}"
+        )
+
+
+# Background task function for automatic semantic filtering
+async def auto_filter_posts(user_id: str, input_id: str, query: str, domain: str = None):
+    """
+    Background task to automatically filter posts after embeddings are generated
+    """
+    try:
+        logger.info(f"Starting automatic semantic filtering for input {input_id} (user: {user_id})")
+        
+        result = await semantic_filtering_service.semantic_filter_posts(
+            user_id=user_id,
+            input_id=input_id,
+            query=query,
+            domain=domain,
+            top_k=500,
+            similarity_threshold=0.55
+        )
+        
+        if result["success"]:
+            logger.info(f"Automatic semantic filtering completed: {result['filtered_documents']} posts")
+        else:
+            logger.warning(f"Automatic semantic filtering failed: {result['message']}")
+            
+    except Exception as e:
+        logger.error(f"Error in automatic semantic filtering: {str(e)}")
+
+@router.post("/auto-filter/{input_id}")
+@router.post("/auto-filter/{input_id}")
+async def trigger_auto_semantic_filtering(
+    input_id: str,
+    query: str,
+    background_tasks: BackgroundTasks,
+    domain: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+
+    """
+    Trigger automatic semantic filtering as a background task
+    
+    This endpoint starts semantic filtering in the background and returns immediately.
+    Use the results endpoints to check when filtering is complete.
+    """
+    try:
+        logger.info(f"Triggering auto semantic filtering for input {input_id} (user: {current_user.id})")
+        
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, input_id, ProcessingStage.SEMANTIC_FILTERING)
+        await UserInputService.update_processing_stage(current_user.id, input_id, ProcessingStage.SEMANTIC_FILTERING.value)
+        
+        # Add semantic filtering task to background tasks
+        background_tasks.add_task(auto_filter_posts, current_user.id, input_id, query, domain)
+        
+        return {
+            "success": True,
+            "message": f"Automatic semantic filtering started for input {input_id}",
+            "input_id": input_id,
+            "query": query,
+            "domain": domain,
+            "status": "filtering_started"
+        }
+        
+    except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
+        raise
+    except Exception as e:
+        logger.error(f"Error triggering auto semantic filtering: {str(e)}")
+        # Release lock on other exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start automatic semantic filtering: {str(e)}"
         )

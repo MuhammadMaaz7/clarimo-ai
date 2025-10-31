@@ -23,11 +23,46 @@ async def get_processing_status(
 ):
     """
     Get the interactive processing status for a specific input with engaging messages.
-    
-    Returns detailed status with user-friendly messages and progress indicators.
     """
     try:
         logger.info(f"Checking processing status for input {input_id} (user: {current_user.id})")
+        
+        # ✅ FIX: First check database status for most accurate state
+        from app.services.user_input_service import UserInputService
+        user_input = await UserInputService.get_user_input_by_id(
+            user_id=current_user.id,
+            input_id=input_id
+        )
+        
+        db_status = user_input.get("status", "unknown") if user_input else "unknown"
+        
+        # If database says completed, return completed status immediately
+        if db_status == "completed":
+            return {
+                "input_id": input_id,
+                "overall_status": "completed",
+                "progress_percentage": 100,
+                "current_stage": "completed",
+                "message": "Analysis complete. Opportunities discovered.",
+                "description": "Processing completed successfully",
+                "animation": "celebration",
+                "next_action": "View your startup opportunities with real user evidence",
+                "database_status": db_status,
+                "can_view_results": True,
+                "pain_points_available": True
+            }
+        elif db_status == "failed":
+            return {
+                "input_id": input_id,
+                "overall_status": "failed",
+                "progress_percentage": 0,
+                "current_stage": "failed",
+                "message": "Processing failed",
+                "description": user_input.get("error_message", "Unknown error occurred"),
+                "animation": "error",
+                "database_status": db_status,
+                "can_view_results": False
+            }
         
         # Check Reddit data
         reddit_dir = Path("data/reddit_posts") / current_user.id

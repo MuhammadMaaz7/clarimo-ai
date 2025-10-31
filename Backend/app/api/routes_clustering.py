@@ -9,6 +9,8 @@ import logging
 from app.db.models.user_model import UserResponse
 from app.core.security import get_current_user
 from app.services.clustering_service import clustering_service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +51,25 @@ async def cluster_posts(
     try:
         logger.info(f"Clustering request for input {request.input_id} (user: {current_user.id})")
         
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, request.input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, request.input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, request.input_id, ProcessingStage.CLUSTERING)
+        await UserInputService.update_processing_stage(current_user.id, request.input_id, ProcessingStage.CLUSTERING.value)
+        
         result = await clustering_service.cluster_filtered_posts(
             user_id=current_user.id,
             input_id=request.input_id,
@@ -60,11 +81,19 @@ async def cluster_posts(
             logger.info(f"Clustering completed: {result['clusters_found']} clusters from {result['total_posts']} posts")
         else:
             logger.warning(f"Clustering failed: {result['message']}")
+            # Release lock on failure
+            await processing_lock_service.release_lock(current_user.id, request.input_id, completed=False)
         
         return ClusteringResponse(**result)
         
+    except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, request.input_id, completed=False)
+        raise
     except Exception as e:
         logger.error(f"Error in clustering endpoint: {str(e)}")
+        # Release lock on other exceptions
+        await processing_lock_service.release_lock(current_user.id, request.input_id, completed=False)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Clustering failed: {str(e)}"
@@ -241,6 +270,25 @@ async def trigger_auto_clustering(
     try:
         logger.info(f"Triggering auto-clustering for input {input_id} (user: {current_user.id})")
         
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, input_id, ProcessingStage.CLUSTERING)
+        await UserInputService.update_processing_stage(current_user.id, input_id, ProcessingStage.CLUSTERING.value)
+        
         # Add clustering task to background tasks
         background_tasks.add_task(auto_cluster_posts, current_user.id, input_id)
         
@@ -251,8 +299,14 @@ async def trigger_auto_clustering(
             "status": "clustering_started"
         }
         
+    except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
+        raise
     except Exception as e:
         logger.error(f"Error triggering auto-clustering: {str(e)}")
+        # Release lock on other exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start automatic clustering: {str(e)}"

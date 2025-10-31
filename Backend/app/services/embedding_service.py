@@ -33,6 +33,10 @@ import faiss
 # Optimized cache
 from .optimized_embedding_cache import OptimizedEmbeddingCache
 
+# Import processing lock service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,12 +48,6 @@ DetectorFactory.seed = 0
 # CONFIG - BALANCED FOR PERFORMANCE AND QUALITY
 # ------------------------
 MODEL_NAME = "mixedbread-ai/mxbai-embed-large-v1"
-# DEFAULT_BATCH_SIZE = 256  # Larger batch size for better CPU throughput
-# MIN_WORDS_KEEP = 12  # Balanced threshold - not too aggressive
-# CHUNK_MAX_WORDS = 350  # Balanced chunk size for context preservation
-# CHUNK_OVERLAP = 30     # Maintain good overlap for context
-
-# Suggested final config:
 DEFAULT_BATCH_SIZE = 128   # Better for CPU memory
 MIN_WORDS_KEEP = 8         # Less aggressive filtering  
 CHUNK_MAX_WORDS = 400      # Larger chunks = fewer embeddings
@@ -180,8 +178,6 @@ def fast_clean(text: str, keep_emojis: bool = False) -> str:
     t = MULTI_WS_RE.sub(' ', t)
     
     return t.strip()
-
-# content_hash function removed - now handled by OptimizedEmbeddingCache
 
 def detect_language_safe(text: str) -> str:
     """Safely detect language, return 'unknown' if detection fails"""
@@ -348,6 +344,19 @@ class EmbeddingService:
             Dictionary with embedding generation results and metadata
         """
         try:
+            # Check if already processing and update stage
+            if not await processing_lock_service.is_processing(user_id, input_id):
+                logger.warning(f"Process {user_id}:{input_id} not found in active processes")
+                return {
+                    "success": False,
+                    "message": "Process not found or not in progress",
+                    "documents_processed": 0
+                }
+            
+            # Update processing stage to EMBEDDINGS
+            await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.EMBEDDINGS)
+            await UserInputService.update_processing_stage(user_id, input_id, ProcessingStage.EMBEDDINGS.value)
+            
             self.use_gpu = use_gpu
             self.batch_size = batch_size
             logger.info(f"Starting embedding generation for input {input_id} (user: {user_id})")
@@ -374,6 +383,15 @@ class EmbeddingService:
             
             if len(processed_docs) == 0:
                 logger.warning("No documents to embed after preprocessing")
+                # Update user input status
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message="No documents to embed after preprocessing"
+                )
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
                 return {
                     "success": False,
                     "message": "No documents to embed after preprocessing",
@@ -393,6 +411,9 @@ class EmbeddingService:
             
             logger.info(f"Successfully generated embeddings for input {input_id}")
             
+            # Update user input status to next stage
+            await UserInputService.update_processing_stage(user_id, input_id, ProcessingStage.SEMANTIC_FILTERING.value)
+            
             return {
                 "success": True,
                 "message": f"Successfully generated embeddings for {len(processed_docs)} documents",
@@ -408,6 +429,20 @@ class EmbeddingService:
             
         except Exception as e:
             logger.error(f"Error generating embeddings: {str(e)}")
+            
+            # Update user input status to failed
+            try:
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=f"Embedding generation failed: {str(e)}"
+                )
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
+            except Exception as update_error:
+                logger.error(f"Failed to update user input status: {str(update_error)}")
+            
             return {
                 "success": False,
                 "message": f"Error generating embeddings: {str(e)}",
@@ -604,7 +639,7 @@ class EmbeddingService:
         index = faiss.IndexFlatIP(dim)  # Inner product for normalized vectors = cosine similarity
         index.add(embeddings.astype(np.float32))  # 🚀 Ensure float32 for better performance
         
-        # � Savee files in parallel for faster I/O
+        # Save files in parallel for faster I/O
         await asyncio.gather(
             self._save_index_async(index, embeddings_dir),
             self._save_embeddings_async(embeddings, embeddings_dir),

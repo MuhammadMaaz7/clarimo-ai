@@ -9,6 +9,8 @@ from pathlib import Path
 from app.db.models.user_model import UserResponse
 from app.core.security import get_current_user
 from app.services.embedding_service import embedding_service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,9 +35,29 @@ async def generate_embeddings_for_input(
     try:
         logger.info(f"Manual embedding generation requested for input {input_id} by user {current_user.id}")
         
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, input_id, ProcessingStage.EMBEDDINGS)
+        await UserInputService.update_processing_stage(current_user.id, input_id, ProcessingStage.EMBEDDINGS.value)
+        
         # Find the Reddit JSON file for this input
         reddit_files_dir = Path("data/reddit_posts") / current_user.id
         if not reddit_files_dir.exists():
+            await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No Reddit data found for this user"
@@ -46,6 +68,7 @@ async def generate_embeddings_for_input(
         reddit_files = list(reddit_files_dir.glob(pattern))
         
         if not reddit_files:
+            await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No Reddit data files found for this input"
@@ -65,6 +88,7 @@ async def generate_embeddings_for_input(
         
         if result["success"]:
             logger.info(f"Manual embedding generation completed for input {input_id}")
+            # Don't release lock here - let the pipeline continue to next stage
             return {
                 "success": True,
                 "message": result["message"],
@@ -74,15 +98,19 @@ async def generate_embeddings_for_input(
             }
         else:
             logger.error(f"Manual embedding generation failed for input {input_id}: {result.get('error')}")
+            await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Embedding generation failed: {result.get('message')}"
             )
         
     except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
         raise
     except Exception as e:
         logger.error(f"Error in manual embedding generation for input {input_id}: {str(e)}")
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate embeddings: {str(e)}"

@@ -17,6 +17,10 @@ from groq import Groq
 
 from app.core.logging import logger
 
+# Import processing lock service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
+
 # ---------- CONFIG ----------
 API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.3-70b-versatile"
@@ -26,6 +30,7 @@ MAX_CHARS_PER_CLUSTER = 4000
 SAMPLE_POSTS_PER_CLUSTER = 4
 RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_BASE = 2.0
+MAX_CLUSTERS_TO_PROCESS = 50  # Safety limit
 
 class PainPointsService:
     """Service for extracting marketable pain points from clustered Reddit posts"""
@@ -160,7 +165,8 @@ class PainPointsService:
                 "post_references": post_references,
                 "analysis_timestamp": time.time(),
                 "source": "reddit_cluster_analysis",
-                "error": str(e)
+                "error": True,
+                "error_message": str(e)
             }
     
     async def _process_cluster_with_llm(self, cluster_id: str, cluster_block: str, post_references: List[Dict]) -> Dict:
@@ -206,6 +212,7 @@ Cluster data:
             logger.info(f"After truncation: prompt chars ~{prompt_chars}, est tokens ~{prompt_tokens_est}")
 
         # API call with retries
+        last_error = None
         for attempt in range(RETRY_ATTEMPTS):
             try:
                 completion = self.client.chat.completions.create(
@@ -225,6 +232,7 @@ Cluster data:
                 return structured_response
                 
             except Exception as e:
+                last_error = e
                 logger.error(f"Error on attempt {attempt + 1} for cluster {cluster_id}: {e}")
                 if attempt < RETRY_ATTEMPTS - 1:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
@@ -232,9 +240,18 @@ Cluster data:
                     await asyncio.sleep(wait)
                 else:
                     logger.error(f"Failed after {RETRY_ATTEMPTS} attempts for cluster {cluster_id}.")
-                    raise e
         
-        return None
+        # ✅ FIX: Return error response instead of None
+        return {
+            "cluster_id": cluster_id,
+            "problem_title": "LLM Processing Failed",
+            "problem_description": f"Failed to process cluster after {RETRY_ATTEMPTS} attempts: {str(last_error)}",
+            "post_references": post_references,
+            "analysis_timestamp": time.time(),
+            "source": "reddit_cluster_analysis",
+            "error": True,
+            "error_message": str(last_error)
+        }
     
     async def extract_pain_points_from_clusters(
         self,
@@ -255,13 +272,53 @@ Cluster data:
             Dict containing results and structured pain point data
         """
         try:
+            # Check if process is already running and update stage
+            if not await processing_lock_service.is_processing(user_id, input_id):
+                logger.warning(f"Process {user_id}:{input_id} not found in active processes")
+                return {
+                    "success": False,
+                    "error": "Process not found or not in progress",
+                    "total_clusters": 0,
+                    "processed": 0,
+                    "failed": 0,
+                    "individual_files": [],
+                    "aggregated_file": None,
+                    "pain_points_data": None
+                }
+            
+            # Update processing stage to PAIN_POINTS_EXTRACTION
+            await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.PAIN_POINTS_EXTRACTION)
+            await UserInputService.update_processing_stage(user_id, input_id, ProcessingStage.PAIN_POINTS_EXTRACTION.value)
+            
             # Determine cluster paths (source)
             clusters_dir = Path("data/clusters") / user_id / input_id
             cluster_summary_path = clusters_dir / "cluster_summary.json"
             cluster_posts_path = clusters_dir / "cluster_posts.json"
             
             if not cluster_summary_path.exists():
-                raise FileNotFoundError(f"Cluster summary not found: {cluster_summary_path}")
+                error_msg = f"Cluster summary not found: {cluster_summary_path}"
+                logger.error(error_msg)
+                
+                # Update status and release lock on error
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=error_msg
+                )
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
+                
+                return {
+                    "success": False,
+                    "error": error_msg,
+                    "total_clusters": 0,
+                    "processed": 0,
+                    "failed": 0,
+                    "individual_files": [],
+                    "aggregated_file": None,
+                    "pain_points_data": None
+                }
             
             # Set pain points output directory (separate from clusters)
             if output_dir:
@@ -299,6 +356,11 @@ Cluster data:
                     cluster_items.append((key, cluster))
             
             cluster_items.sort(key=lambda x: x[0] if isinstance(x[0], (int, float)) else str(x[0]))
+            
+            # ✅ FIX: Limit number of clusters to process for safety
+            if len(cluster_items) > MAX_CLUSTERS_TO_PROCESS:
+                logger.warning(f"Too many clusters ({len(cluster_items)}), limiting to {MAX_CLUSTERS_TO_PROCESS}")
+                cluster_items = cluster_items[:MAX_CLUSTERS_TO_PROCESS]
 
             # Prepare output files
             aggregated_file = output_path / "marketable_pain_points_all.json"
@@ -344,6 +406,7 @@ Cluster data:
                         cluster_id, cluster_block, post_references
                     )
                     
+                    # ✅ FIX: Always add to results, even if LLM failed
                     if structured_pain_point:
                         # Save individual file as JSON
                         out_file = output_path / f"pain_point_cluster_{cluster_id}.json"
@@ -354,24 +417,40 @@ Cluster data:
                         # Add to aggregated pain points
                         all_pain_points["pain_points"].append(structured_pain_point)
                         
-                        results["processed"] += 1
-                        logger.info(f"✓ Successfully processed cluster {cluster_id} with {len(post_references)} post references")
+                        # Count as processed or failed based on error flag
+                        if structured_pain_point.get("error"):
+                            results["failed"] += 1
+                            logger.error(f"✗ Failed to process cluster {cluster_id}: {structured_pain_point.get('error_message')}")
+                        else:
+                            results["processed"] += 1
+                            logger.info(f"✓ Successfully processed cluster {cluster_id} with {len(post_references)} post references")
                     else:
+                        # This should not happen with our fix above, but just in case
                         results["failed"] += 1
-                        logger.error(f"✗ Failed to process cluster {cluster_id}")
+                        logger.error(f"✗ LLM returned None for cluster {cluster_id}")
+                        
+                        # Create consistent error entry
+                        error_entry = {
+                            "cluster_id": cluster_id,
+                            "problem_title": "Processing Failed",
+                            "problem_description": "LLM analysis returned no response",
+                            "post_references": post_references,
+                            "analysis_timestamp": time.time(),
+                            "source": "reddit_cluster_analysis",
+                            "error": True,
+                            "error_message": "LLM returned None"
+                        }
+                        all_pain_points["pain_points"].append(error_entry)
                         
                 except Exception as e:
                     results["failed"] += 1
                     logger.error(f"✗ Error processing cluster {cluster_id}: {e}")
                     
-                    # Create error entry with available post references
+                    # ✅ FIX: Create consistent error entry format
                     error_entry = {
                         "cluster_id": cluster_id,
-                        "marketable_pain_point": "Analysis Failed",
-                        "domain": "Error",
-                        "problem": f"Failed to analyze: {str(e)}",
-                        "problem_scope": "N/A",
-                        "potential_solution": "N/A",
+                        "problem_title": "Processing Error",
+                        "problem_description": f"Failed to analyze cluster: {str(e)}",
                         "post_references": self._extract_post_references(cluster),
                         "analysis_timestamp": time.time(),
                         "source": "reddit_cluster_analysis",
@@ -405,6 +484,26 @@ Cluster data:
                 logger.error(f"Error saving pain points to database: {str(db_error)}")
                 # Don't fail the entire process if database save fails
 
+            # ✅ FIX: Update processing stage to COMPLETED and release lock
+            try:
+                await processing_lock_service.update_stage(user_id, input_id, ProcessingStage.COMPLETED)
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="completed",
+                    current_stage=ProcessingStage.COMPLETED.value
+                )
+                logger.info(f"Updated user input status to 'completed' for {input_id}")
+            except Exception as status_error:
+                logger.error(f"Error updating user input status: {str(status_error)}")
+
+            # ✅ FIX: Release lock after successful completion
+            try:
+                await processing_lock_service.release_lock(user_id, input_id, completed=True)
+                logger.info(f"Released processing lock after successful pain points extraction for {input_id}")
+            except Exception as lock_error:
+                logger.error(f"Error releasing processing lock: {str(lock_error)}")
+
             logger.info(f"Pain points extraction complete!")
             logger.info(f"Total clusters: {results['total_clusters']}")
             logger.info(f"Successfully processed: {results['processed']}")
@@ -412,10 +511,34 @@ Cluster data:
             logger.info(f"Aggregated results: {results['aggregated_file']}")
             logger.info(f"Total pain points with post references: {len(all_pain_points['pain_points'])}")
             
-            return results
+            # ✅ FIX: Return more detailed success information
+            return {
+                **results,
+                "pain_points_count": len(all_pain_points['pain_points']),
+                "completed_at": time.time(),
+                "success_rate": (results["processed"] / results["total_clusters"] * 100) if results["total_clusters"] > 0 else 0
+            }
             
         except Exception as e:
             logger.error(f"Error in pain points extraction: {str(e)}")
+            
+            # ✅ FIX: Update database status on failure and release lock
+            try:
+                await UserInputService.update_input_status(
+                    user_id=user_id,
+                    input_id=input_id,
+                    status="failed",
+                    current_stage=ProcessingStage.FAILED.value,
+                    error_message=f"Pain points extraction failed: {str(e)}"
+                )
+            except Exception as status_error:
+                logger.error(f"Error updating failed status: {str(status_error)}")
+            
+            try:
+                await processing_lock_service.release_lock(user_id, input_id, completed=False)
+            except Exception as lock_error:
+                logger.error(f"Error releasing lock on failure: {str(lock_error)}")
+            
             return {
                 "success": False,
                 "error": str(e),

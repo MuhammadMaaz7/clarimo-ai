@@ -13,6 +13,8 @@ from app.core.logging import logger
 from app.db.models.user_model import UserResponse
 from app.core.security import get_current_user
 from app.services.pain_points_service import pain_points_service
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
+from app.services.user_input_service import UserInputService
 
 router = APIRouter(prefix="/pain-points", tags=["pain-points"])
 
@@ -69,6 +71,25 @@ async def extract_pain_points(
     try:
         logger.info(f"Pain points extraction request for input {request.input_id} (user: {current_user.id})")
         
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, request.input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, request.input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, request.input_id, ProcessingStage.PAIN_POINTS_EXTRACTION)
+        await UserInputService.update_processing_stage(current_user.id, request.input_id, ProcessingStage.PAIN_POINTS_EXTRACTION.value)
+        
         result = await pain_points_service.extract_pain_points_from_clusters(
             user_id=current_user.id,
             input_id=request.input_id,
@@ -91,6 +112,9 @@ async def extract_pain_points(
             )
         else:
             logger.warning(f"Pain points extraction failed: {result.get('error', 'Unknown error')}")
+            # Release lock on failure
+            await processing_lock_service.release_lock(current_user.id, request.input_id, completed=False)
+            
             return PainPointsResponse(
                 success=False,
                 message=f"Pain points extraction failed: {result.get('error', 'Unknown error')}",
@@ -99,8 +123,14 @@ async def extract_pain_points(
                 failed=result.get("failed", 0)
             )
         
+    except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, request.input_id, completed=False)
+        raise
     except Exception as e:
         logger.error(f"Error in pain points extraction endpoint: {str(e)}")
+        # Release lock on other exceptions
+        await processing_lock_service.release_lock(current_user.id, request.input_id, completed=False)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Pain points extraction failed: {str(e)}"
@@ -325,6 +355,25 @@ async def trigger_auto_pain_points_extraction(
     try:
         logger.info(f"Triggering auto pain points extraction for input {input_id} (user: {current_user.id})")
         
+        # Check if process is already running
+        if await processing_lock_service.is_processing(current_user.id, input_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(current_user.id, input_id)
+        if not lock_acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Processing already in progress for this input"
+            )
+        
+        # Update processing stage
+        await processing_lock_service.update_stage(current_user.id, input_id, ProcessingStage.PAIN_POINTS_EXTRACTION)
+        await UserInputService.update_processing_stage(current_user.id, input_id, ProcessingStage.PAIN_POINTS_EXTRACTION.value)
+        
         # Add pain points extraction task to background tasks
         background_tasks.add_task(auto_extract_pain_points, current_user.id, input_id)
         
@@ -335,8 +384,14 @@ async def trigger_auto_pain_points_extraction(
             "status": "extraction_started"
         }
         
+    except HTTPException:
+        # Release lock on HTTP exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
+        raise
     except Exception as e:
         logger.error(f"Error triggering auto pain points extraction: {str(e)}")
+        # Release lock on other exceptions
+        await processing_lock_service.release_lock(current_user.id, input_id, completed=False)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start automatic pain points extraction: {str(e)}"

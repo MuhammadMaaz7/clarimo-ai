@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 from bson import ObjectId
 import uuid
@@ -48,8 +48,13 @@ class UserInputDB(BaseModel):
     region: Optional[str] = None
     target_audience: Optional[str] = None
     status: str = Field(default="received")
+    current_stage: str = Field(default="received")  # Track current processing stage
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    processing_started_at: Optional[datetime] = None  # When processing actually starts
+    completed_at: Optional[datetime] = None  # When processing completes
+    error_message: Optional[str] = None  # Store any error messages
+    results: Optional[Dict[str, Any]] = None  # Store final pain points results
 
     model_config = {
         "populate_by_name": True,

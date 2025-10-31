@@ -15,6 +15,7 @@ from app.db.models.user_model import UserResponse
 from app.core.security import get_current_user
 from app.services.keyword_generation_service import KeywordGenerationService
 from app.services.user_input_service import UserInputService
+from app.services.processing_lock_service import processing_lock_service, ProcessingStage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +51,15 @@ async def generate_keywords(
                 detail="User input not found"
             )
         
+        # Check if processing is already in progress
+        is_processing = await processing_lock_service.is_processing(current_user.id, request.input_id)
+        if is_processing:
+            current_stage = await processing_lock_service.get_current_stage(current_user.id, request.input_id)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Processing already in progress. Current stage: {current_stage.value if current_stage else 'unknown'}"
+            )
+        
         # Check if keywords already exist (unless force regenerate is requested)
         if not request.force_regenerate:
             existing_keywords = await KeywordGenerationService.get_keywords_by_input_id(
@@ -73,23 +83,24 @@ async def generate_keywords(
                     created_at=existing_keywords["created_at"]
                 )
         
-        # Generate keywords (this will happen synchronously for now, but could be moved to background)
-        result = await KeywordGenerationService.generate_keywords_for_input(
-            user_id=current_user.id,
-            input_id=request.input_id,
-            problem_description=user_input["problem_description"],
-            domain=user_input.get("domain")
+        # Start background processing for keyword generation
+        background_tasks.add_task(
+            generate_keywords_background,
+            current_user.id,
+            request.input_id,
+            user_input["problem_description"],
+            user_input.get("domain"),
+            request.force_regenerate
         )
         
-        if result["success"]:
-            logger.info(f"Successfully generated keywords for input {request.input_id}")
-            return KeywordGenerationResponse(**result)
-        else:
-            logger.error(f"Failed to generate keywords for input {request.input_id}: {result.get('error')}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to generate keywords: {result.get('error')}"
-            )
+        logger.info(f"Started background keyword generation for input {request.input_id}")
+        return KeywordGenerationResponse(
+            success=True,
+            keywords_id="processing",
+            message="Keyword generation started in background",
+            data=None,
+            created_at=None
+        )
         
     except HTTPException:
         raise
@@ -99,6 +110,63 @@ async def generate_keywords(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate keywords: {str(e)}"
         )
+
+
+async def generate_keywords_background(
+    user_id: str,
+    input_id: str,
+    problem_description: str,
+    domain: Optional[str],
+    force_regenerate: bool
+):
+    """
+    Background task for keyword generation
+    """
+    try:
+        # Acquire processing lock
+        lock_acquired = await processing_lock_service.acquire_lock(user_id, input_id)
+        if not lock_acquired:
+            logger.warning(f"Processing already in progress for {user_id}:{input_id}")
+            return
+        
+        try:
+            # Update user input status to processing
+            await UserInputService.update_input_status(
+                user_id=user_id,
+                input_id=input_id,
+                status="processing",
+                current_stage=ProcessingStage.KEYWORD_GENERATION.value
+            )
+            
+            # Generate keywords
+            result = await KeywordGenerationService.generate_keywords_for_input(
+                user_id=user_id,
+                input_id=input_id,
+                problem_description=problem_description,
+                domain=domain
+            )
+            
+            if not result["success"]:
+                logger.error(f"Keyword generation failed for input {input_id}: {result.get('error')}")
+                # Status update is handled within the service for failures
+                
+        except Exception as processing_error:
+            logger.error(f"Error in background keyword generation for {input_id}: {str(processing_error)}")
+            # Update status to failed
+            await UserInputService.update_input_status(
+                user_id=user_id,
+                input_id=input_id,
+                status="failed",
+                current_stage=ProcessingStage.FAILED.value,
+                error_message=str(processing_error)
+            )
+            
+        finally:
+            # Always release the lock
+            await processing_lock_service.release_lock(user_id, input_id)
+            
+    except Exception as e:
+        logger.error(f"Background keyword generation failed for {user_id}:{input_id}: {str(e)}")
 
 
 @router.get("/input/{input_id}", response_model=dict)
@@ -122,6 +190,13 @@ async def get_keywords_for_input(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Keywords not found for this input"
             )
+        
+        # Check if processing is stuck
+        is_processing = await processing_lock_service.is_processing(current_user.id, input_id)
+        if keywords.get("generation_status") == "processing" and not is_processing:
+            # Keyword generation appears stuck
+            keywords["generation_status"] = "failed"
+            keywords["error_message"] = "Processing appears to have stalled"
         
         logger.info(f"Successfully retrieved keywords for input {input_id}")
         return keywords
@@ -271,4 +346,40 @@ async def auto_generate_keywords_for_input(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to auto-generate keywords: {str(e)}"
+        )
+
+
+@router.get("/processing-status/{input_id}")
+async def get_keyword_generation_status(
+    input_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get the current status of keyword generation for a specific input.
+    """
+    try:
+        # Check processing lock status
+        is_processing = await processing_lock_service.is_processing(current_user.id, input_id)
+        current_stage = await processing_lock_service.get_current_stage(current_user.id, input_id)
+        
+        # Get keywords data
+        keywords = await KeywordGenerationService.get_keywords_by_input_id(
+            user_id=current_user.id,
+            input_id=input_id
+        )
+        
+        return {
+            "input_id": input_id,
+            "is_processing": is_processing,
+            "current_stage": current_stage.value if current_stage else None,
+            "keywords_exists": keywords is not None,
+            "generation_status": keywords.get("generation_status") if keywords else None,
+            "has_error": keywords.get("error_message") if keywords else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting keyword generation status for {input_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get keyword generation status: {str(e)}"
         )
