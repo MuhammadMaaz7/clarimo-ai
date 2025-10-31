@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { History, BarChart3, Calendar, ExternalLink, AlertCircle, FileText } from 'lucide-react';
+import { History, BarChart3, Calendar, ExternalLink, AlertCircle, FileText, Trash2 } from 'lucide-react';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../hooks/use-toast';
 
 import { api } from '../lib/api';
 
@@ -26,6 +28,12 @@ const DiscoveredProblems = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    inputId: string;
+    query: string;
+  }>({ isOpen: false, inputId: '', query: '' });
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchAnalysisData();
@@ -68,6 +76,38 @@ const DiscoveredProblems = () => {
 
   const viewAnalysis = (inputId: string) => {
     window.location.href = `/analysis/${inputId}`;
+  };
+
+  const openDeleteConfirmation = (inputId: string, query: string) => {
+    setConfirmModal({ isOpen: true, inputId, query });
+  };
+
+  const closeDeleteConfirmation = () => {
+    setConfirmModal({ isOpen: false, inputId: '', query: '' });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await api.userInputs.deleteAnalysis(confirmModal.inputId);
+      
+      // Show success toast
+      toast({
+        title: "Success!",
+        description: `Analysis Deleted successfully!`,
+      });
+      
+      // Refresh the data after successful deletion
+      await fetchAnalysisData();
+    } catch (error) {
+      console.error('Error deleting analysis:', error);
+      
+      // Show error toast
+      toast({
+        title: "❌ Delete Failed",
+        description: "Failed to delete analysis. Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -229,14 +269,25 @@ const DiscoveredProblems = () => {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => viewAnalysis(item.input_id)}
-                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 ml-4"
-                    >
-                      View Problems <ExternalLink className="h-4 w-4 ml-1" />
-                    </Button>
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteConfirmation(item.input_id, item.original_query)}
+                        className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                        title="Delete analysis"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => viewAnalysis(item.input_id)}
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                      >
+                        View Problems <ExternalLink className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -244,6 +295,18 @@ const DiscoveredProblems = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeDeleteConfirmation}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Analysis?"
+        message="Are you sure you want to delete this analysis?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

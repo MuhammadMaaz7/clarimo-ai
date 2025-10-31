@@ -483,6 +483,91 @@ async def delete_user_input(
         )
 
 
+@router.delete("/{input_id}/analysis")
+async def delete_analysis_records(
+    input_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Delete analysis database records only (keeps expensive files like embeddings):
+    - User input record from database
+    - Keywords from database  
+    - Pain points from database
+    
+    Preserves: embeddings, Reddit posts, clusters (expensive to regenerate)
+    """
+    try:
+        logger.info(f"Deleting analysis records for {input_id} (user: {current_user.id})")
+        
+        deletion_results = {
+            "success": True,
+            "input_id": input_id,
+            "deleted_records": [],
+            "errors": []
+        }
+        
+        # Release any processing locks first
+        try:
+            await processing_lock_service.release_lock(current_user.id, input_id)
+            deletion_results["deleted_records"].append("processing_lock")
+        except Exception as e:
+            deletion_results["errors"].append(f"Processing lock: {str(e)}")
+        
+        # 1. Delete pain points from database
+        try:
+            from app.services.pain_points_db_service import pain_points_db_service
+            pain_points_deleted = await pain_points_db_service.delete_pain_points_analysis(current_user.id, input_id)
+            if pain_points_deleted:
+                deletion_results["deleted_records"].append("pain_points_database")
+                logger.info(f"🗑️ Deleted pain points database record for {input_id}")
+        except Exception as e:
+            deletion_results["errors"].append(f"Pain points database: {str(e)}")
+        
+        # 2. Delete keywords from database (if they have a separate database record)
+        try:
+            from app.services.keyword_generation_service import KeywordGenerationService
+            keywords_deleted = await KeywordGenerationService.delete_keywords(current_user.id, input_id)
+            if keywords_deleted:
+                deletion_results["deleted_records"].append("keywords_database")
+                logger.info(f"🗑️ Deleted keywords database record for {input_id}")
+        except Exception as e:
+            deletion_results["errors"].append(f"Keywords database: {str(e)}")
+        
+        # 3. Finally, delete user input record
+        try:
+            user_input_deleted = await UserInputService.delete_user_input(current_user.id, input_id)
+            if user_input_deleted:
+                deletion_results["deleted_records"].append("user_input")
+                logger.info(f"🗑️ Deleted user input record for {input_id}")
+            else:
+                raise Exception("User input not found or already deleted")
+        except Exception as e:
+            deletion_results["errors"].append(f"User input: {str(e)}")
+        
+        # Determine overall success
+        if deletion_results["errors"]:
+            deletion_results["success"] = False
+            logger.warning(f"⚠️ Analysis records deletion for {input_id} completed with {len(deletion_results['errors'])} errors")
+        else:
+            logger.info(f"✅ Analysis records deletion for {input_id} completed successfully")
+        
+        return {
+            "success": deletion_results["success"],
+            "message": f"Analysis deleted from database. Removed {len(deletion_results['deleted_records'])} records.",
+            "deleted_records": deletion_results["deleted_records"],
+            "errors": deletion_results["errors"],
+            "records_deleted": len(deletion_results["deleted_records"]),
+            "errors_count": len(deletion_results["errors"])
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error deleting analysis records for {input_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete analysis records: {str(e)}"
+        )
+
+
 @router.get("/stats/count")
 async def get_input_count(
     current_user: UserResponse = Depends(get_current_user),

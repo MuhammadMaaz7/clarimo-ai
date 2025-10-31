@@ -3,14 +3,9 @@
  * Automatically handles 401 errors and token expiration
  */
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8000/api';
 
-interface ApiResponse<T = any> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  [key: string]: any;
-}
+
 
 class ApiError extends Error {
   constructor(
@@ -125,7 +120,75 @@ export const api = {
       }),
   },
 
-  // Problem discovery endpoints
+  // User Input endpoints - CORRECTED
+  userInputs: {
+    create: (data: {
+      problemDescription: string;
+      domain?: string;
+      region?: string;
+      targetAudience?: string;
+    }) =>
+      apiRequest<{
+        success: boolean;
+        input_id: string;
+        message: string;
+        created_at: string;
+      }>('/user-inputs/', {
+        method: 'POST',
+        body: JSON.stringify({
+          problem_description: data.problemDescription,
+          domain: data.domain,
+          region: data.region,
+          target_audience: data.targetAudience,
+        }),
+      }),
+    
+    getAll: () =>
+      apiRequest<Array<{
+        _id: string;
+        user_id: string;
+        input_id: string;
+        problem_description: string;
+        status: string;
+        current_stage: string;
+        created_at: string;
+        updated_at: string;
+      }>>('/user-inputs/'),
+    
+    getById: (inputId: string) =>
+      apiRequest<any>(`/user-inputs/${inputId}`),
+    
+    delete: (inputId: string) =>
+      apiRequest<{ success: boolean; message: string }>(`/user-inputs/${inputId}`, {
+        method: 'DELETE',
+      }),
+    
+    deleteAnalysis: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        deleted_records: string[];
+        errors: string[];
+        records_deleted: number;
+        errors_count: number;
+      }>(`/user-input/${inputId}/analysis`, {
+        method: 'DELETE',
+      }),
+    
+    deleteComplete: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        deleted_components: string[];
+        errors: string[];
+        components_deleted: number;
+        errors_count: number;
+      }>(`/user-inputs/${inputId}/complete`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Problem discovery endpoints - CORRECTED
   problems: {
     discover: (data: {
       problemDescription: string;
@@ -133,9 +196,19 @@ export const api = {
       region?: string;
       targetAudience?: string;
     }) =>
-      apiRequest<ApiResponse>('/problems/discover', {
+      apiRequest<{
+        success: boolean;
+        input_id: string;
+        message: string;
+        created_at: string;
+      }>('/user-input/', {  // ✅ FIXED: Changed from '/problems/discover' to '/user-input/'
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          problem_description: data.problemDescription,
+          domain: data.domain,
+          region: data.region,
+          target_audience: data.targetAudience,
+        }),
       }),
     
     validateInput: (data: {
@@ -152,27 +225,18 @@ export const api = {
           confidence?: number;
         };
         message: string;
-      }>('/problems/validate-input', {
+      }>('/user-input/validate', {  // You might need to create this endpoint
         method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    
-    getResults: (requestId: string) =>
-      apiRequest<ApiResponse>(`/problems/results/${requestId}`),
-    
-    getRequests: () =>
-      apiRequest<any[]>('/problems/requests'),
-    
-    getRequestDetails: (requestId: string) =>
-      apiRequest<any>(`/problems/requests/${requestId}`),
-    
-    deleteRequest: (requestId: string) =>
-      apiRequest<{ success: boolean; message: string }>(`/problems/requests/${requestId}`, {
-        method: 'DELETE',
+        body: JSON.stringify({
+          problem_description: data.problemDescription,
+          domain: data.domain,
+          region: data.region,
+          target_audience: data.targetAudience,
+        }),
       }),
   },
 
-  // Processing status endpoints
+  // Processing status endpoints - CORRECTED
   status: {
     getProcessingStatus: (inputId: string) =>
       apiRequest<{
@@ -189,16 +253,190 @@ export const api = {
         can_view_results: boolean;
         pain_points_available?: boolean;
         pain_points_count?: number;
-      }>(`/api/processing-status/${inputId}`),
+      }>(`/processing-status/${inputId}`),  // ✅ Fixed: removed /api prefix
     
     getAllProcessingStatus: () =>
       apiRequest<{
         processing_status: any[];
         total_inputs: number;
-      }>('/api/processing-status/'),
+      }>('/processing-status/'),  // ✅ Fixed: removed /api prefix
   },
 
-  // Clustering endpoints
+  // Keyword Generation endpoints - ADDED
+  keywords: {
+    generate: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        keywords_data?: {
+          domain_anchors: string[];
+          problem_phrases: string[];
+          potential_subreddits: string[];
+        };
+        output_file?: string;
+      }>(`/keywords/generate/${inputId}`, {
+        method: 'POST',
+      }),
+    
+    getResults: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        keywords_data: any;
+        file_path: string;
+      }>(`/keywords/results/${inputId}`),
+  },
+
+  // Reddit Fetching endpoints - ADDED
+  reddit: {
+    fetchPosts: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        total_posts: number;
+        by_query: Array<{
+          query: string;
+          domain_anchors_used: string[];
+          problem_phrases_used: string[];
+          posts: any[];
+          n_posts: number;
+        }>;
+        by_subreddit: Array<{
+          subreddit: string;
+          meta: any;
+          posts: any[];
+          extracted_count: number;
+        }>;
+        output_file?: string;
+      }>(`/reddit/fetch/${inputId}`, {
+        method: 'POST',
+      }),
+    
+    getResults: (inputId: string) =>
+      apiRequest<any>(`/reddit/results/${inputId}`),
+  },
+
+  // Embedding endpoints - ADDED
+  embeddings: {
+    generate: (inputId: string, useGpu: boolean = false, batchSize: number = 32) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        documents_processed: number;
+        output_directory: string;
+        files_created: string[];
+      }>(`/embeddings/generate/${inputId}?use_gpu=${useGpu}&batch_size=${batchSize}`, {
+        method: 'POST',
+      }),
+    
+    getDetails: (inputId: string) =>
+      apiRequest<{
+        input_id: string;
+        embeddings_dir: string;
+        metadata: any;
+        files: Array<{
+          name: string;
+          path: string;
+          size_bytes: number;
+          created_at: number;
+        }>;
+        total_files: number;
+      }>(`/embeddings/${inputId}`),
+    
+    list: () =>
+      apiRequest<{
+        embeddings: Array<{
+          input_id: string;
+          document_count: number;
+          created_date: string;
+          directory_path: string;
+          files: Record<string, string>;
+        }>;
+        total_embeddings: number;
+      }>('/embeddings/'),
+    
+    delete: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+      }>(`/embeddings/${inputId}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Semantic Filtering endpoints - ADDED
+  semanticFiltering: {
+    filter: (inputId: string, data: {
+      query: string;
+      domain?: string;
+      top_k?: number;
+      similarity_threshold?: number;
+    }) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        total_documents: number;
+        filtered_documents: number;
+        similarity_threshold: number;
+        similarity_stats: {
+          min_similarity: number;
+          max_similarity: number;
+          avg_similarity: number;
+        };
+        output_files: {
+          filtered_posts: string;
+          filtered_csv?: string;
+          filtering_config: string;
+        };
+        filtered_posts_directory: string;
+        query_used: string;
+        no_results: boolean;
+        clustering_triggered: boolean;
+      }>(`/semantic-filtering/filter/${inputId}`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    getResults: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        input_id: string;
+        filtered_posts: any[];
+        filtering_config: any;
+        files: Record<string, string>;
+        directory: string;
+      }>(`/semantic-filtering/${inputId}`),
+    
+    list: () =>
+      apiRequest<{
+        filtered_results: Array<{
+          input_id: string;
+          filtered_count: number;
+          total_documents: number;
+          query_used: string;
+          similarity_threshold: number;
+          created_date: string;
+          similarity_stats: {
+            min_similarity: number;
+            max_similarity: number;
+            avg_similarity: number;
+          };
+          files: Record<string, string>;
+          directory: string;
+        }>;
+        total_results: number;
+      }>('/semantic-filtering/'),
+    
+    delete: (inputId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        files_deleted: string[];
+      }>(`/semantic-filtering/${inputId}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Clustering endpoints - CORRECTED
   clustering: {
     clusterPosts: (data: {
       input_id: string;
@@ -216,7 +454,8 @@ export const api = {
         statistics?: Record<string, any>;
         output_files?: Record<string, string>;
         clusters_directory?: string;
-      }>('/api/clustering/cluster', {
+        pain_points_extraction_success?: boolean;
+      }>('/clustering/cluster', {  // ✅ Fixed: removed /api prefix
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -231,21 +470,21 @@ export const api = {
         config: Record<string, any>;
         files: Record<string, string>;
         directory: string;
-      }>(`/api/clustering/results/${inputId}`),
+      }>(`/clustering/results/${inputId}`),  // ✅ Fixed: removed /api prefix
     
     listClusterResults: () =>
       apiRequest<{
         success: boolean;
         cluster_results: any[];
         total_results: number;
-      }>('/api/clustering/list'),
+      }>('/clustering/list'),  // ✅ Fixed: removed /api prefix
     
     deleteClusterResults: (inputId: string) =>
       apiRequest<{
         success: boolean;
         message: string;
         deleted_directory: string;
-      }>(`/api/clustering/results/${inputId}`, {
+      }>(`/clustering/results/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'DELETE',
       }),
     
@@ -255,41 +494,43 @@ export const api = {
         message: string;
         input_id: string;
         status: string;
-      }>(`/api/clustering/auto-cluster/${inputId}`, {
+      }>(`/clustering/auto-cluster/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'POST',
       }),
   },
 
-  // Embedding cache endpoints
+  // Embedding cache endpoints - CORRECTED
   cache: {
     getStatistics: () =>
       apiRequest<{
         success: boolean;
         cache_statistics: {
           cache_exists: boolean;
-          cached_embeddings: number;
-          cache_size_mb: number;
+          optimized_cache?: any;
           cache_directory?: string;
+          cache_type?: string;
+          error?: string;
         };
         explanation: {
           purpose: string;
           scope: string;
           benefit: string;
+          tiers: Record<string, string>;
         };
-      }>('/api/embeddings/cache/stats'),
+      }>('/embeddings/cache/stats'),  // ✅ Fixed: corrected endpoint
     
-    clear: () =>
+    clear: (cacheType: string = 'all') =>
       apiRequest<{
         success: boolean;
         message: string;
         embeddings_removed: number;
         space_freed_mb: number;
-      }>('/api/embeddings/cache/clear', {
+      }>(`/embeddings/cache/clear?cache_type=${cacheType}`, {  // ✅ Fixed: corrected endpoint
         method: 'DELETE',
       }),
   },
 
-  // Pain points endpoints
+  // Pain points endpoints - CORRECTED
   painPoints: {
     extract: (data: {
       input_id: string;
@@ -304,7 +545,9 @@ export const api = {
         individual_files?: string[];
         aggregated_file?: string;
         pain_points_count?: number;
-      }>('/api/pain-points/extract', {
+        completed_at?: number;
+        success_rate?: number;
+      }>('/pain-points/extract', {  // ✅ Fixed: removed /api prefix
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -334,10 +577,12 @@ export const api = {
           }>;
           analysis_timestamp: number;
           source: string;
+          error?: boolean;
+          error_message?: string;
         }>;
         total_pain_points: number;
         domains?: Record<string, any>;
-      }>(`/api/pain-points/results/${inputId}${includeDomains ? '?include_domains=true' : ''}`),
+      }>(`/pain-points/results/${inputId}?include_domains=${includeDomains}`),  // ✅ Fixed: removed /api prefix
     
     list: () =>
       apiRequest<{
@@ -350,7 +595,7 @@ export const api = {
           file_path: string;
         }>;
         total_results: number;
-      }>('/api/pain-points/list'),
+      }>('/pain-points/list'),  // ✅ Fixed: removed /api prefix
     
     getByDomain: (inputId: string) =>
       apiRequest<{
@@ -359,7 +604,7 @@ export const api = {
         domains: Record<string, any[]>;
         total_domains: number;
         total_pain_points: number;
-      }>(`/api/pain-points/domains/${inputId}`),
+      }>(`/pain-points/domains/${inputId}`),  // ✅ Fixed: removed /api prefix
     
     delete: (inputId: string) =>
       apiRequest<{
@@ -367,7 +612,7 @@ export const api = {
         message: string;
         deleted_files: string[];
         files_deleted: number;
-      }>(`/api/pain-points/results/${inputId}`, {
+      }>(`/pain-points/results/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'DELETE',
       }),
     
@@ -377,7 +622,7 @@ export const api = {
         message: string;
         input_id: string;
         status: string;
-      }>(`/api/pain-points/trigger-auto/${inputId}`, {
+      }>(`/pain-points/trigger-auto/${inputId}`, {  // ✅ Fixed: removed /api prefix
         method: 'POST',
       }),
     
@@ -393,7 +638,7 @@ export const api = {
           created_at: string;
         }>;
         total_items: number;
-      }>(`/api/pain-points/history?limit=${limit}`),
+      }>(`/pain-points/history?limit=${limit}`),  // ✅ Fixed: removed /api prefix
     
     getStats: () =>
       apiRequest<{
@@ -404,13 +649,13 @@ export const api = {
           total_clusters: number;
           latest_analysis: string | null;
         };
-      }>('/api/pain-points/stats'),
+      }>('/pain-points/stats'),  // ✅ Fixed: removed /api prefix
     
     getAnalysisFromDB: (inputId: string) =>
       apiRequest<{
         success: boolean;
         analysis: any;
-      }>(`/api/pain-points/analysis/${inputId}`),
+      }>(`/pain-points/analysis/${inputId}`),  // ✅ Fixed: removed /api prefix
   },
 };
 

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { ExternalLink, AlertCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { Collapsible, CollapsibleContent } from './ui/collapsible';
+import { api, ApiError } from '../lib/api'; // ✅ FIXED: Use api client
 
 interface PostReference {
   post_id: string;
@@ -22,6 +23,8 @@ interface PainPoint {
   post_references: PostReference[];
   analysis_timestamp: number;
   source: string;
+  error?: boolean;
+  error_message?: string;
 }
 
 interface PainPointsData {
@@ -51,23 +54,19 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
   const fetchPainPoints = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      setError(null);
       
-      const response = await fetch(`http://localhost:8000/api/pain-points/results/${inputId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch pain points');
-      }
-
-      const data = await response.json();
+      // ✅ FIXED: Use api client instead of direct fetch
+      const data = await api.painPoints.getResults(inputId, false);
       setPainPointsData(data);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error fetching pain points:', err);
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to load pain points data');
+      }
     } finally {
       setLoading(false);
     }
