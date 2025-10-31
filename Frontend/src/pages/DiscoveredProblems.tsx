@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { History, BarChart3, Calendar, ExternalLink, AlertCircle, FileText } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+
 import { api } from '../lib/api';
 
 interface HistoryItem {
@@ -22,7 +22,6 @@ interface UserStats {
 }
 
 const DiscoveredProblems = () => {
-  const { user } = useAuth();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +34,7 @@ const DiscoveredProblems = () => {
   const fetchAnalysisData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch both history and stats
       const [historyResponse, statsResponse] = await Promise.all([
         api.painPoints.getHistory(),
@@ -196,7 +195,7 @@ const DiscoveredProblems = () => {
               <FileText className="mx-auto h-16 w-16 text-gray-400 mb-6" />
               <h3 className="text-xl font-semibold text-white mb-2">No Problems Discovered Yet</h3>
               <p className="text-gray-400 mb-6">Start discovering problems from online communities to see them here.</p>
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/'}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -206,7 +205,7 @@ const DiscoveredProblems = () => {
           ) : (
             <div className="space-y-4">
               {history.map((item) => (
-                <div 
+                <div
                   key={item.input_id}
                   className="glass border-border/30 bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors"
                 >

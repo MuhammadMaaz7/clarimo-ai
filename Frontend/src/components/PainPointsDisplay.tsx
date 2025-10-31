@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { ExternalLink, AlertCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { Collapsible, CollapsibleContent } from './ui/collapsible';
 
 interface PostReference {
   post_id: string;
@@ -141,7 +141,7 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
 
       {/* Problems Grid */}
       <div className="space-y-4">
-        {painPointsData.pain_points.map((painPoint, index) => {
+        {painPointsData.pain_points.map((painPoint) => {
           const isExpanded = expandedCards.has(painPoint.cluster_id);
           
           return (
@@ -189,7 +189,7 @@ const PainPointsDisplay: React.FC<PainPointsDisplayProps> = ({ inputId }) => {
                         </span>
                       </div>
                       <div className="space-y-3">
-                        {painPoint.post_references.map((post, postIndex) => (
+                        {painPoint.post_references.map((post) => (
                           <div 
                             key={post.post_id} 
                             className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors"

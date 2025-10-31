@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, X } from 'lucide-react';
 import PainPointsDisplay from '../components/PainPointsDisplay';
+import { useAnalysis } from '../contexts/AnalysisContext';
 import { api } from '../lib/api';
 
 const AnalysisView = () => {
@@ -11,6 +12,7 @@ const AnalysisView = () => {
     const [analysis, setAnalysis] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { setCurrentAnalysis, clearAnalysis } = useAnalysis();
 
     useEffect(() => {
         if (inputId) {
@@ -27,6 +29,14 @@ const AnalysisView = () => {
 
             if (response.success) {
                 setAnalysis(response.analysis);
+                // Update the persistent analysis context
+                setCurrentAnalysis({
+                    inputId: inputId!,
+                    query: response.analysis.original_query || 'Analysis',
+                    timestamp: Date.now(),
+                    painPointsCount: response.analysis.pain_points_count,
+                    totalClusters: response.analysis.total_clusters
+                });
             } else {
                 setError('Analysis not found');
             }
@@ -80,16 +90,30 @@ const AnalysisView = () => {
                 </Button>
             </div>
 
-            {/* Analysis Info */}
+            {/* Analysis Info with Close Button */}
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
-                <h1 className="text-2xl font-bold text-white mb-2">Analysis Results</h1>
-                <p className="text-gray-300 mb-4">"{analysis.original_query}"</p>
-                <div className="flex items-center gap-6 text-sm text-gray-400">
-                    <span>{analysis.pain_points_count} problems found</span>
-                    <span>•</span>
-                    <span>{analysis.total_clusters} discussion themes</span>
-                    <span>•</span>
-                    <span>Analyzed {new Date(analysis.created_at).toLocaleDateString()}</span>
+                <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-bold text-white mb-2">Analysis Results</h1>
+                        <p className="text-gray-300 mb-4">"{analysis.original_query}"</p>
+                        <div className="flex items-center gap-6 text-sm text-gray-400">
+                            <span>{analysis.pain_points_count} problems found</span>
+                            <span>•</span>
+                            <span>{analysis.total_clusters} discussion themes</span>
+                            <span>•</span>
+                            <span>Analyzed {new Date(analysis.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            clearAnalysis();
+                            navigate('/');
+                        }}
+                        className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors ml-4"
+                        title="Close analysis and return to search"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
             </div>
 

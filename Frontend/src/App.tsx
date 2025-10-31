@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AnalysisProvider } from "./contexts/AnalysisContext";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import ProblemDiscovery from "./pages/ProblemDiscovery";
@@ -118,9 +119,11 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <AppContent />
-          <Toaster />
-          <Sonner />
+          <AnalysisProvider>
+            <AppContent />
+            <Toaster />
+            <Sonner />
+          </AnalysisProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

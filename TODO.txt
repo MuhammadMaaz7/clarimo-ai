@@ -43,3 +43,10 @@ laptop pay run kerna hai
 demo k liye uske related runs kerne hain
 UI better, loading spinner shit
 use domain in filtering too
+
+output should not be removed until user removes in frontend
+proper logging totall time, separate time
+remove session management for now
+remove TRUNCATED shows in frontend posts
+processing status to completed
+any limit on reference inputs?

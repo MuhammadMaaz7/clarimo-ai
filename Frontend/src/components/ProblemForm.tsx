@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useImperativeHandle, forwardRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -10,6 +10,11 @@ interface ProblemFormProps {
   onSubmit: (data: FormData) => void;
   isLoading: boolean;
   compact?: boolean;
+  onReset?: () => void;
+}
+
+export interface ProblemFormRef {
+  resetForm: () => void;
 }
 
 export interface FormData {
@@ -19,7 +24,7 @@ export interface FormData {
   targetAudience?: string;
 }
 
-const ProblemForm = ({ onSubmit, isLoading, compact = false }: ProblemFormProps) => {
+const ProblemForm = forwardRef<ProblemFormRef, ProblemFormProps>(({ onSubmit, isLoading, compact = false, onReset }, ref) => {
   const [formData, setFormData] = useState<FormData>({
     problemDescription: '',
     domain: '',
@@ -60,6 +65,20 @@ const ProblemForm = ({ onSubmit, isLoading, compact = false }: ProblemFormProps)
     const cleanedValue = validateText(value);
     setFormData((prev) => ({ ...prev, [field]: cleanedValue }));
   };
+
+  const resetForm = () => {
+    setFormData({
+      problemDescription: '',
+      domain: '',
+      region: '',
+      targetAudience: '',
+    });
+    onReset?.();
+  };
+
+  useImperativeHandle(ref, () => ({
+    resetForm
+  }));
 
   return (
     <Card className={`glass border-border/50 ${compact ? 'bg-white/3' : ''}`}>
@@ -164,6 +183,8 @@ const ProblemForm = ({ onSubmit, isLoading, compact = false }: ProblemFormProps)
       </CardContent>
     </Card>
   );
-};
+});
+
+ProblemForm.displayName = 'ProblemForm';
 
 export default ProblemForm;
