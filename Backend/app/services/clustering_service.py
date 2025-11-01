@@ -24,7 +24,7 @@ from app.services.embedding_service import get_global_model
 from app.services.processing_lock_service import processing_lock_service, ProcessingStage
 from app.services.user_input_service import UserInputService
 
-# 🚀 Load global model singleton at module level
+# Load global model singleton at module level
 GLOBAL_MODEL = get_global_model(use_gpu=False)
 
 # Configure logging
