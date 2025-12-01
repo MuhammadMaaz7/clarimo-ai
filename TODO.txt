@@ -1,52 +1,36 @@
-embeddings should be used
-saved in global
-if similar context data, then used 
+# TODO - Clarimo AI
 
-test with 2 similar inputs
+## Module 1 - Pain Point Discovery
+- Embeddings should be used and saved in global cache
+- Test with 2 similar inputs to verify cache is working
+- Remove user1,2,3,4 test data
+- Understand global cache vs optimized global cache
+- Understand exact, normalized, semantic matching
+- Change priority to semantic hits for testing
+- Text color improvements in UI
+- Display only problems (remove upvotes display)
+- UI improvements needed
+- Save pain points in database
+- User should see their inputs and corresponding pain points in profile/UI
+- Input validation with prompt in keyword extraction
+- UI improvements: loading spinner, better design
+- Use domain in filtering
+- Output should not be removed until user removes in frontend
+- Proper logging: total time, separate time tracking
+- Remove session management for now
+- Remove "TRUNCATED" display in frontend posts
+- Processing status should show "completed"
+- Any limit on reference inputs?
 
-remove user1,2,3,4
+## Module 2 - Idea Validation
+- Only 1 paragraph input - system should extract all required info automatically
+  (Currently taking multiple inputs, should be extracted from single description)
 
-what is global cache, and optimized global cache
+## Recent Fixes (2025-11-30)
+✅ Fixed validation bugs - inconsistent Score class definitions
+✅ Fixed LLM prompt ambiguity in risk assessor
+✅ Fixed continuous polling after validation completes
+✅ Fixed ideas not showing validation status in UI
 
-
-what is exact, normalized, semantic
-
-
-what is the purpose of this exact, normalized, semantic
-
-how will it work?
-
-now lets start doing testing first from frontend whole pipeline
-
-llets let me input smth like, apps for personal gym training
-
-Smth like this
-
-when all of this steps are done from user oinput till clustering, then
-
-i will enter another input similar to it, not same, so we can test the embeddings cache are being used or not?
-
-
-
-for testing, change first priority to semantic hits, so we can check if it is hitting semantically or not? working correctly or not?
-
-text color change
-display only problems
-remove upvotes
-UI better
-
-save the pain points in database
-and user should also able to see in UI profile or somewhere, what he input and pain points corresponsding which were generated
-
-input validation with prompt in keyword extraction
-laptop pay run kerna hai 
-demo k liye uske related runs kerne hain
-UI better, loading spinner shit
-use domain in filtering too
-
-output should not be removed until user removes in frontend
-proper logging totall time, separate time
-remove session management for now
-remove TRUNCATED shows in frontend posts
-processing status to completed
-any limit on reference inputs?
+Recommendations should not be hardcoded
+Something other than only LLM calls

@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { User, Mail, Settings, History, BarChart3, Lightbulb } from 'lucide-react';
+import { User, Mail, Settings, History, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 
 const Profile = () => {
   const { user, logout, updateProfile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -194,26 +196,18 @@ const Profile = () => {
               <Button
                 variant="ghost"
                 className="w-full justify-start text-white hover:bg-white/10"
-                onClick={() => globalThis.location.href = '/'}
+                onClick={() => navigate('/ideas')}
               >
-                <BarChart3 className="h-4 w-4 mr-3 text-blue-400" />
-                New Problem Discovery
+                <CheckCircle className="h-4 w-4 mr-3 text-blue-400" />
+                My Ideas
               </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start text-white hover:bg-white/10"
-                onClick={() => globalThis.location.href = '/discovered-problems'}
+                onClick={() => navigate('/discovered-problems')}
               >
                 <History className="h-4 w-4 mr-3 text-green-400" />
                 My Discovered Problems
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-white/10 opacity-50 cursor-not-allowed"
-                disabled
-              >
-                <Lightbulb className="h-4 w-4 mr-3 text-yellow-400" />
-                Idea Validation (Coming Soon)
               </Button>
             </CardContent>
           </Card>

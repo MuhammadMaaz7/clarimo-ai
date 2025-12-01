@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
@@ -6,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AnalysisProvider } from "./contexts/AnalysisContext";
+import { ValidationProvider } from "./contexts/ValidationContext";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import ProblemDiscovery from "./pages/ProblemDiscovery";
@@ -14,10 +16,20 @@ import ComingSoon from "./pages/ComingSoon";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
-import AnalysisView from "./pages/AnalysisView";
-import DiscoveredProblems from "./pages/DiscoveredProblems";
 import LoadingSpinner from "./components/LoadingSpinner";
 import { useTokenValidation } from "./hooks/useTokenValidation";
+
+// Lazy load heavy components for better performance
+const AnalysisView = lazy(() => import("./pages/AnalysisView"));
+const DiscoveredProblems = lazy(() => import("./pages/DiscoveredProblems"));
+const IdeaList = lazy(() => import("./pages/IdeaList"));
+const IdeaNew = lazy(() => import("./pages/IdeaNew"));
+const IdeaDetail = lazy(() => import("./pages/IdeaDetail"));
+const IdeaPainPoints = lazy(() => import("./pages/IdeaPainPoints"));
+const IdeaValidation = lazy(() => import("./pages/IdeaValidation"));
+const IdeaValidationHistory = lazy(() => import("./pages/IdeaValidationHistory"));
+const IdeaVersionComparison = lazy(() => import("./pages/IdeaVersionComparison"));
+const IdeaComparison = lazy(() => import("./pages/IdeaComparison"));
 
 const queryClient = new QueryClient();
 
@@ -56,54 +68,100 @@ const AppContent = () => {
               {user && <Sidebar />}
               <main className={`flex-1 ${user ? 'lg:ml-4' : ''}`}>
                 <div className="responsive-container min-h-[calc(100vh-4rem)]">
-                  <Routes>
-                    <Route path="/" element={
-                      <ProtectedRoute>
-                        <ProblemDiscovery />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/profile" element={
-                      <ProtectedRoute>
-                        <Profile />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/analysis/:inputId" element={
-                      <ProtectedRoute>
-                        <AnalysisView />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/discovered-problems" element={
-                      <ProtectedRoute>
-                        <DiscoveredProblems />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/idea-validation" element={
-                      <ProtectedRoute>
-                        <ComingSoon />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/competitor-analysis" element={
-                      <ProtectedRoute>
-                        <ComingSoon />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/customer-finding" element={
-                      <ProtectedRoute>
-                        <ComingSoon />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/launch-planning" element={
-                      <ProtectedRoute>
-                        <ComingSoon />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/go-to-market" element={
-                      <ProtectedRoute>
-                        <ComingSoon />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="*" element={<ComingSoon />} />
-                  </Routes>
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+                      <LoadingSpinner />
+                    </div>
+                  }>
+                    <Routes>
+                      <Route path="/" element={
+                        <ProtectedRoute>
+                          <ProblemDiscovery />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/profile" element={
+                        <ProtectedRoute>
+                          <Profile />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/analysis/:inputId" element={
+                        <ProtectedRoute>
+                          <AnalysisView />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/discovered-problems" element={
+                        <ProtectedRoute>
+                          <DiscoveredProblems />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas" element={
+                        <ProtectedRoute>
+                          <IdeaList />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/new" element={
+                        <ProtectedRoute>
+                          <IdeaNew />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/compare" element={
+                        <ProtectedRoute>
+                          <IdeaComparison />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/:ideaId" element={
+                        <ProtectedRoute>
+                          <IdeaDetail />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/:ideaId/pain-points" element={
+                        <ProtectedRoute>
+                          <IdeaPainPoints />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/:ideaId/validate" element={
+                        <ProtectedRoute>
+                          <IdeaValidation />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/:ideaId/history" element={
+                        <ProtectedRoute>
+                          <IdeaValidationHistory />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/ideas/:ideaId/history/compare" element={
+                        <ProtectedRoute>
+                          <IdeaVersionComparison />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/idea-validation" element={
+                        <ProtectedRoute>
+                          <IdeaList />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/competitor-analysis" element={
+                        <ProtectedRoute>
+                          <ComingSoon />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/customer-finding" element={
+                        <ProtectedRoute>
+                          <ComingSoon />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/launch-planning" element={
+                        <ProtectedRoute>
+                          <ComingSoon />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/go-to-market" element={
+                        <ProtectedRoute>
+                          <ComingSoon />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="*" element={<ComingSoon />} />
+                    </Routes>
+                  </Suspense>
                 </div>
               </main>
             </div>
@@ -120,9 +178,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AnalysisProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner />
+            <ValidationProvider>
+              <AppContent />
+              <Toaster />
+              <Sonner />
+            </ValidationProvider>
           </AnalysisProvider>
         </AuthProvider>
       </BrowserRouter>

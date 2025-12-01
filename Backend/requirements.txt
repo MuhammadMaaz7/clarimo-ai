@@ -19,6 +19,9 @@ pandas
 numpy
 torch
 
+# Fix protobuf version for tensorflow 2.20.0
+protobuf>=5.28.0
+
 # Machine learning & clustering
 scikit-learn
 umap-learn
@@ -31,7 +34,17 @@ seaborn
 
 # Optional utilities (recommended)
 requests
+aiohttp
 typing-extensions
 
 # Pain points extraction dependencies
 groq
+
+# PDF generation
+reportlab
+pillow
+
+# Testing dependencies
+pytest
+pytest-asyncio
+pytest-cov

@@ -587,6 +587,298 @@ export const api = {
       }),
   },
 
+  // Idea Validation endpoints - NEW
+  ideas: {
+    create: (data: {
+      title: string;
+      description: string;
+      problemStatement: string;
+      solutionDescription: string;
+      targetMarket: string;
+      businessModel?: string;
+      teamCapabilities?: string;
+      linkedPainPointIds?: string[];
+    }) =>
+      apiRequest<{
+        id: string;
+        user_id: string;
+        title: string;
+        description: string;
+        problem_statement: string;
+        solution_description: string;
+        target_market: string;
+        business_model?: string;
+        team_capabilities?: string;
+        linked_pain_points: string[];
+        created_at: string;
+        updated_at: string;
+      }>('/ideas/', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: data.title,
+          description: data.description,
+          problem_statement: data.problemStatement,
+          solution_description: data.solutionDescription,
+          target_market: data.targetMarket,
+          business_model: data.businessModel,
+          team_capabilities: data.teamCapabilities,
+          linked_pain_point_ids: data.linkedPainPointIds || [],
+        }),
+      }),
+
+    getAll: (filters?: {
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      minScore?: number;
+      maxScore?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.sortBy) params.append('sort_by', filters.sortBy);
+      if (filters?.sortOrder) params.append('sort_order', filters.sortOrder);
+      if (filters?.minScore !== undefined) params.append('min_score', filters.minScore.toString());
+      if (filters?.maxScore !== undefined) params.append('max_score', filters.maxScore.toString());
+      
+      const queryString = params.toString();
+      return apiRequest<Array<{
+        id: string;
+        user_id: string;
+        title: string;
+        description: string;
+        problem_statement: string;
+        solution_description: string;
+        target_market: string;
+        business_model?: string;
+        team_capabilities?: string;
+        linked_pain_points: string[];
+        created_at: string;
+        updated_at: string;
+        latest_validation?: {
+          validation_id: string;
+          overall_score: number;
+          status: string;
+          created_at: string;
+        };
+      }>>(`/ideas/${queryString ? '?' + queryString : ''}`);
+    },
+
+    getById: (ideaId: string) =>
+      apiRequest<{
+        id: string;
+        user_id: string;
+        title: string;
+        description: string;
+        problem_statement: string;
+        solution_description: string;
+        target_market: string;
+        business_model?: string;
+        team_capabilities?: string;
+        linked_pain_points: string[];
+        created_at: string;
+        updated_at: string;
+      }>(`/ideas/${ideaId}`),
+
+    update: (ideaId: string, data: {
+      title?: string;
+      description?: string;
+      problemStatement?: string;
+      solutionDescription?: string;
+      targetMarket?: string;
+      businessModel?: string;
+      teamCapabilities?: string;
+    }) =>
+      apiRequest<{
+        id: string;
+        user_id: string;
+        title: string;
+        description: string;
+        problem_statement: string;
+        solution_description: string;
+        target_market: string;
+        business_model?: string;
+        team_capabilities?: string;
+        linked_pain_points: string[];
+        created_at: string;
+        updated_at: string;
+      }>(`/ideas/${ideaId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: data.title,
+          description: data.description,
+          problem_statement: data.problemStatement,
+          solution_description: data.solutionDescription,
+          target_market: data.targetMarket,
+          business_model: data.businessModel,
+          team_capabilities: data.teamCapabilities,
+        }),
+      }),
+
+    delete: (ideaId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+      }>(`/ideas/${ideaId}`, {
+        method: 'DELETE',
+      }),
+
+    linkPainPoints: (ideaId: string, painPointIds: string[]) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+        linked_pain_points: string[];
+      }>(`/ideas/${ideaId}/link-pain-points`, {
+        method: 'POST',
+        body: JSON.stringify({ pain_point_ids: painPointIds }),
+      }),
+  },
+
+  // Validation endpoints - NEW
+  validations: {
+    validate: (ideaId: string, config?: {
+      includeWebSearch?: boolean;
+      includeCompetitiveAnalysis?: boolean;
+      maxCompetitorsToAnalyze?: number;
+      useCachedResults?: boolean;
+    }) =>
+      apiRequest<{
+        validation_id: string;
+        idea_id: string;
+        user_id: string;
+        status: string;
+        overall_score: number | null;
+        individual_scores: Record<string, any> | null;
+        report_data: Record<string, any> | null;
+        created_at: string;
+        completed_at: string | null;
+        error_message: string | null;
+      }>('/validations/validate', {
+        method: 'POST',
+        body: JSON.stringify({
+          idea_id: ideaId,
+          config: config || {},
+        }),
+      }),
+
+    getResult: (validationId: string) =>
+      apiRequest<{
+        validation_id: string;
+        idea_id: string;
+        user_id: string;
+        status: string;
+        overall_score: number | null;
+        individual_scores: Record<string, any> | null;
+        report_data: Record<string, any> | null;
+        created_at: string;
+        completed_at: string | null;
+        error_message: string | null;
+      }>(`/validations/${validationId}`),
+
+    getStatus: (validationId: string) =>
+      apiRequest<{
+        validation_id: string;
+        status: string;
+        progress: number;
+        current_stage: string;
+        estimated_completion: string | null;
+      }>(`/validations/status/${validationId}`),
+
+    getHistory: (ideaId: string) =>
+      apiRequest<Array<{
+        validation_id: string;
+        idea_id: string;
+        overall_score: number;
+        status: string;
+        created_at: string;
+        completed_at: string | null;
+      }>>(`/validations/idea/${ideaId}/history`),
+
+    compare: (validationIds: string[]) =>
+      apiRequest<{
+        comparison_id: string;
+        validation_ids: string[];
+        ideas: Array<Record<string, any>>;
+        metric_comparison: Record<string, number[]>;
+        winners: Record<string, string>;
+        overall_recommendation: string | null;
+        created_at: string;
+      }>(`/validations/compare?validation_ids=${validationIds.join(',')}`),
+
+    compareVersions: (validationId1: string, validationId2: string) =>
+      apiRequest<{
+        idea_id: string;
+        validation_1_id: string;
+        validation_2_id: string;
+        validation_1_date: string;
+        validation_2_date: string;
+        score_deltas: Record<string, number>;
+        improved_metrics: string[];
+        declined_metrics: string[];
+        unchanged_metrics: string[];
+        overall_score_delta: number;
+      }>(`/validations/compare-versions?validation_id_1=${validationId1}&validation_id_2=${validationId2}`),
+
+    exportJson: (validationId: string) =>
+      apiRequest<Record<string, any>>(`/validations/${validationId}/export/json`),
+
+    exportPdf: async (validationId: string): Promise<Blob> => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_BASE_URL}/validations/${validationId}/export/pdf`, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+      
+      if (!response.ok) {
+        throw new ApiError(`Failed to export PDF: ${response.statusText}`, response.status);
+      }
+      
+      return await response.blob();
+    },
+
+    createShareLink: (validationId: string, data: {
+      privacyLevel: 'public' | 'private' | 'password_protected';
+      password?: string;
+      expiresAt?: string;
+    }) =>
+      apiRequest<{
+        share_id: string;
+        validation_id: string;
+        share_url: string;
+        privacy_level: string;
+        created_at: string;
+        expires_at: string | null;
+        is_active: boolean;
+      }>(`/validations/${validationId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({
+          privacy_level: data.privacyLevel,
+          password: data.password,
+          expires_at: data.expiresAt,
+        }),
+      }),
+
+    listShareLinks: (validationId: string) =>
+      apiRequest<{
+        share_links: Array<{
+          share_id: string;
+          validation_id: string;
+          share_url: string;
+          privacy_level: string;
+          created_at: string;
+          expires_at: string | null;
+          is_active: boolean;
+          access_count: number;
+        }>;
+      }>(`/validations/${validationId}/shares`),
+
+    revokeShareLink: (shareId: string) =>
+      apiRequest<{
+        message: string;
+        share_id: string;
+      }>(`/validations/shares/${shareId}`, {
+        method: 'DELETE',
+      }),
+  },
+
   // Pain points endpoints - CORRECTED
   painPoints: {
     extract: (data: {

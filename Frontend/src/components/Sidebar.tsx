@@ -14,7 +14,7 @@ import { Button } from './ui/button';
 
 const navigation = [
   { name: 'Problem Discovery', href: '/', icon: Lightbulb },
-  { name: 'Idea Validation', href: '/idea-validation', icon: CheckCircle },
+  { name: 'Idea Validation', href: '/ideas/new', icon: CheckCircle },
   { name: 'Competitor Analysis', href: '/competitor-analysis', icon: Target },
   { name: 'Customer Finding', href: '/customer-finding', icon: Users },
   { name: 'Launch Planning', href: '/launch-planning', icon: Rocket },
@@ -83,6 +83,8 @@ const Sidebar = () => {
                 )}>{item.name}</span>
               </NavLink>
             ))}
+
+
           </nav>
 
           {/* Footer - Spacer to push to bottom */}
