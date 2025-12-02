@@ -42,16 +42,19 @@ export default function RecommendationsPanel({
 
   // Parse recommendation to extract category if present
   const parseRecommendation = (rec: string): { category: string | null; text: string } => {
+    // Remove brackets like [Differentiation] or [Problem Clarity]
+    const cleanRec = rec.replace(/^\[([^\]]+)\]\s*/, '');
+    
     if (!categorized) {
-      return { category: null, text: rec };
+      return { category: null, text: cleanRec };
     }
 
     // Check if recommendation starts with a category (e.g., "Problem Clarity: ...")
-    const match = rec.match(/^([^:]+):\s*(.+)$/);
+    const match = cleanRec.match(/^([^:]+):\s*(.+)$/);
     if (match) {
       return { category: match[1].trim(), text: match[2].trim() };
     }
-    return { category: null, text: rec };
+    return { category: null, text: cleanRec };
   };
 
   // Get priority badge based on position (first few are critical)

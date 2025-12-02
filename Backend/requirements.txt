@@ -36,6 +36,10 @@ seaborn
 requests
 aiohttp
 typing-extensions
+httpx
+
+# App store scraping
+google-play-scraper
 
 # Pain points extraction dependencies
 groq

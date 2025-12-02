@@ -450,7 +450,7 @@ class EmbeddingService:
             }
     
     async def _process_posts_for_embedding(self, posts: List[Dict]) -> List[Dict]:
-        """🚀 Process Reddit posts with parallel processing optimization"""
+        """ Process Reddit posts with parallel processing optimization"""
         # Use ThreadPool for CPU-bound preprocessing
         max_workers = min(4, os.cpu_count() or 1)
         

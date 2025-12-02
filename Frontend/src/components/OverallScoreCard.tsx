@@ -12,7 +12,6 @@ import {
   TrendingUp, 
   TrendingDown, 
   Minus,
-  Award,
   AlertCircle,
   CheckCircle2,
   XCircle
@@ -53,7 +52,6 @@ export default function OverallScoreCard({ score, previousScore }: OverallScoreC
 
   // Get icon based on score
   const getScoreIcon = (score: number) => {
-    if (score >= 4.5) return <Award className="h-12 w-12 text-white" />;
     if (score >= 4.0) return <CheckCircle2 className="h-12 w-12 text-white" />;
     if (score >= 3.0) return <AlertCircle className="h-12 w-12 text-white" />;
     return <XCircle className="h-12 w-12 text-white" />;
@@ -132,13 +130,18 @@ export default function OverallScoreCard({ score, previousScore }: OverallScoreC
                 <span className="text-muted-foreground">Score Range</span>
                 <span className="font-medium">1.0 - 5.0</span>
               </div>
-              <div className="relative h-3 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full overflow-hidden">
+              <div className="relative h-3 bg-muted/30 rounded-full overflow-hidden">
+                {/* Score bar */}
+                <div 
+                  className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all duration-500"
+                  style={{ width: `${((score - 1) / 4) * 100}%` }}
+                />
                 {/* Score indicator */}
                 <div 
-                  className="absolute top-0 h-full w-1 bg-white shadow-lg"
+                  className="absolute top-0 h-full w-0.5 bg-foreground"
                   style={{ left: `${((score - 1) / 4) * 100}%` }}
                 >
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white" />
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-foreground" />
                 </div>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">

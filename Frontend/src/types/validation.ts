@@ -192,26 +192,26 @@ export const METRIC_METADATA: Record<MetricName, Omit<MetricInfo, 'name'>> = {
   problem_clarity: {
     displayName: 'Problem Clarity',
     description: 'How clearly the idea defines the problem it solves',
-    icon: '🎯',
-    color: '#3B82F6', // blue
+    icon: '○',
+    color: 'hsl(var(--primary))', // theme primary
   },
   market_demand: {
     displayName: 'Market Demand',
     description: 'Evidence of market interest and demand for the solution',
-    icon: '📈',
-    color: '#10B981', // green
+    icon: '△',
+    color: 'hsl(var(--primary))', // theme primary
   },
   solution_fit: {
     displayName: 'Solution Fit',
     description: 'How well the solution addresses the identified problem',
-    icon: '🔧',
-    color: '#8B5CF6', // purple
+    icon: '□',
+    color: 'hsl(var(--primary))', // theme primary
   },
   differentiation: {
     displayName: 'Differentiation',
     description: 'Uniqueness and competitive advantage of the idea',
-    icon: '⭐',
-    color: '#F59E0B', // amber
+    icon: '◇',
+    color: 'hsl(var(--primary))', // theme primary
   },
 };
 
@@ -223,11 +223,11 @@ export function getMetricInfo(metricName: MetricName): MetricInfo {
   };
 }
 
-// Helper function to get score color
+// Helper function to get score color (subtle theme colors)
 export function getScoreColor(score: number): string {
-  if (score >= 4) return '#22C55E'; // green
-  if (score >= 3) return '#F59E0B'; // amber
-  return '#EF4444'; // red
+  if (score >= 4) return 'hsl(var(--primary))'; // theme primary for good
+  if (score >= 3) return 'hsl(var(--muted-foreground))'; // muted for moderate
+  return 'hsl(var(--destructive))'; // destructive for poor
 }
 
 // Helper function to get score label

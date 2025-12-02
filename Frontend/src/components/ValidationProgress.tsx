@@ -122,11 +122,11 @@ export function ValidationProgress({
   };
 
   const stages = [
-    { key: 'problem_clarity', icon: '🎯', label: 'Problem Clarity', range: [0, 20] },
-    { key: 'market_demand', icon: '📈', label: 'Market Demand', range: [20, 35] },
-    { key: 'solution_fit', icon: '🔧', label: 'Solution Fit', range: [35, 50] },
-    { key: 'differentiation', icon: '⭐', label: 'Differentiation', range: [50, 70] },
-    { key: 'report', icon: '📊', label: 'Report', range: [95, 100] },
+    { key: 'problem_clarity', icon: '○', label: 'Problem Clarity', range: [0, 20] },
+    { key: 'market_demand', icon: '△', label: 'Market Demand', range: [20, 35] },
+    { key: 'solution_fit', icon: '□', label: 'Solution Fit', range: [35, 50] },
+    { key: 'differentiation', icon: '◇', label: 'Differentiation', range: [50, 70] },
+    { key: 'report', icon: '◆', label: 'Report', range: [95, 100] },
   ];
 
   const getStageStatus = (stageRange: number[]) => {
@@ -180,17 +180,17 @@ export function ValidationProgress({
       </p>
       
       {isError && (
-        <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
-          <p className="text-red-300 font-medium mb-2">
-            ❌ Validation Error
+        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <p className="text-destructive font-medium mb-2">
+            Validation Error
           </p>
-          <p className="text-red-200 text-sm mb-3">
+          <p className="text-destructive/80 text-sm mb-3">
             {currentValidation?.error_message || validationError || 'Please try again or contact support if the issue persists.'}
           </p>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
+              className="px-4 py-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg transition-colors duration-200 text-sm font-medium"
             >
               Retry Validation
             </button>
@@ -232,19 +232,19 @@ export function ValidationProgress({
                 key={stage.key}
                 className={`p-3 rounded-xl border transition-all duration-300 ${
                   isActive 
-                    ? 'border-primary bg-primary/10 glow-sm' 
+                    ? 'border-primary bg-primary/10' 
                     : isCompleted 
-                      ? 'border-green-500/50 bg-green-500/10' 
+                      ? 'border-primary/50 bg-primary/5' 
                       : 'border-border/30 bg-card/20'
                 }`}
               >
-                <div className="text-2xl mb-1">{stage.icon}</div>
+                <div className="text-2xl mb-1 font-bold text-primary">{stage.icon}</div>
                 <div className="text-xs font-medium">{stage.label}</div>
                 {isActive && (
                   <div className="text-xs text-primary mt-1">Processing...</div>
                 )}
                 {isCompleted && (
-                  <div className="text-xs text-green-400 mt-1">✓ Done</div>
+                  <div className="text-xs text-primary/70 mt-1">Complete</div>
                 )}
               </div>
             );
@@ -253,9 +253,9 @@ export function ValidationProgress({
       )}
       
       {isComplete && (
-        <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-          <CheckCircle className="h-6 w-6 text-green-400 mx-auto mb-2" />
-          <p className="text-green-400 font-medium">Validation Complete!</p>
+        <div className="mt-6 p-4 bg-primary/10 border border-primary/30 rounded-xl">
+          <CheckCircle className="h-6 w-6 text-primary mx-auto mb-2" />
+          <p className="text-primary font-medium">Validation Complete!</p>
           <p className="text-sm text-muted-foreground mt-1">
             Your comprehensive validation report is ready. Review your scores and recommendations.
           </p>

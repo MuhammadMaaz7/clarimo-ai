@@ -43,6 +43,40 @@ export default function MetricScoreCard({
   const scoreColor = getScoreColor(score.value);
   const scoreLabel = getScoreLabel(score.value);
 
+  // Format evidence value for display
+  const formatEvidenceValue = (value: any): string => {
+    if (typeof value === 'number') {
+      return value.toLocaleString();
+    }
+    if (typeof value === 'object' && value !== null) {
+      // Handle external data with breakdown
+      if (value.total_products_found !== undefined) {
+        const parts = [];
+        if (value.hackernews_products !== undefined) parts.push(`HackerNews: ${value.hackernews_products}`);
+        if (value.github_repos !== undefined) parts.push(`GitHub: ${value.github_repos}`);
+        if (value.app_store_apps !== undefined) parts.push(`App Store: ${value.app_store_apps}`);
+        if (value.play_store_apps !== undefined) parts.push(`Play Store: ${value.play_store_apps}`);
+        
+        if (parts.length > 0) {
+          return `${value.total_products_found} total (${parts.join(', ')})`;
+        }
+        return `${value.total_products_found} products found`;
+      }
+      // Handle app store data
+      if (value.app_store || value.play_store) {
+        const appCount = (value.app_store?.apps?.length || 0) + (value.play_store?.apps?.length || 0);
+        return `${appCount} apps found`;
+      }
+      // Format other objects nicely
+      const entries = Object.entries(value);
+      if (entries.length <= 3) {
+        return entries.map(([k, v]) => `${k}: ${v}`).join(', ');
+      }
+      return `${entries.length} items`;
+    }
+    return String(value);
+  };
+
   // Determine score status icon
   const getScoreIcon = () => {
     if (score.value >= 4) return <CheckCircle2 className="h-5 w-5" style={{ color: scoreColor }} />;
@@ -168,35 +202,40 @@ export default function MetricScoreCard({
           </div>
         )}
 
-        {/* Evidence */}
-        {score.evidence && Object.keys(score.evidence).length > 0 && (
-          <div>
-            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              Evidence
-            </h4>
-            <div className="space-y-2">
-              {Object.entries(score.evidence).map(([key, value]) => (
-                <div 
-                  key={key} 
-                  className="flex items-center justify-between text-sm bg-muted/30 rounded-lg p-3"
-                >
-                  <span className="text-muted-foreground capitalize">
-                    {key.replace(/_/g, ' ')}
-                  </span>
-                  <span className="font-medium">
-                    {typeof value === 'number' 
-                      ? value.toLocaleString() 
-                      : typeof value === 'object'
-                      ? JSON.stringify(value)
-                      : String(value)
-                    }
-                  </span>
-                </div>
-              ))}
+        {/* Evidence - Only show user-friendly data */}
+        {score.evidence && Object.keys(score.evidence).length > 0 && (() => {
+          // Filter out technical metadata
+          const technicalKeys = ['model', 'llm', 'api', 'version', 'timestamp', 'processing_time', 'tokens', 'confidence_threshold'];
+          const filteredEvidence = Object.entries(score.evidence).filter(([key]) => {
+            return !technicalKeys.some(tech => key.toLowerCase().includes(tech));
+          });
+          
+          if (filteredEvidence.length === 0) return null;
+          
+          return (
+            <div>
+              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                Market Evidence
+              </h4>
+              <div className="space-y-2">
+                {filteredEvidence.map(([key, value]) => (
+                  <div 
+                    key={key} 
+                    className="flex items-center justify-between text-sm bg-muted/30 rounded-lg p-3"
+                  >
+                    <span className="text-muted-foreground capitalize">
+                      {key.replace(/_/g, ' ')}
+                    </span>
+                    <span className="font-medium">
+                      {formatEvidenceValue(value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Recommendations */}
         {score.recommendations && score.recommendations.length > 0 && (
@@ -219,24 +258,7 @@ export default function MetricScoreCard({
           </div>
         )}
 
-        {/* Metadata (if any) */}
-        {score.metadata && Object.keys(score.metadata).length > 0 && (
-          <div className="pt-4 border-t border-border/50">
-            <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer hover:text-foreground transition-colors">
-                Additional Information
-              </summary>
-              <div className="mt-2 space-y-1 pl-4">
-                {Object.entries(score.metadata).map(([key, value]) => (
-                  <div key={key} className="flex gap-2">
-                    <span className="font-medium">{key}:</span>
-                    <span>{String(value)}</span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          </div>
-        )}
+
 
         {/* View Details Button */}
         {onViewDetails && (
