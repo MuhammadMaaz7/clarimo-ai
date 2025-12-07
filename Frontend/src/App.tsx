@@ -8,6 +8,7 @@ import { SidebarProvider } from "./contexts/SidebarContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AnalysisProvider } from "./contexts/AnalysisContext";
 import { ValidationProvider } from "./contexts/ValidationContext";
+import { CompetitorProvider } from "./contexts/CompetitorContext";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import ProblemDiscovery from "./pages/ProblemDiscovery";
@@ -30,6 +31,10 @@ const IdeaValidation = lazy(() => import("./pages/IdeaValidation"));
 const IdeaValidationHistory = lazy(() => import("./pages/IdeaValidationHistory"));
 const IdeaVersionComparison = lazy(() => import("./pages/IdeaVersionComparison"));
 const IdeaComparison = lazy(() => import("./pages/IdeaComparison"));
+const CompetitorAnalysis = lazy(() => import("./pages/CompetitorAnalysis"));
+const CompetitorAnalysisNew = lazy(() => import("./pages/CompetitorAnalysisNew")); // Production-ready
+const CompetitorAnalysisHistory = lazy(() => import("./pages/CompetitorAnalysisHistory"));
+const CompetitorAnalysisDetail = lazy(() => import("./pages/CompetitorAnalysisDetail"));
 
 const queryClient = new QueryClient();
 
@@ -141,7 +146,22 @@ const AppContent = () => {
                       } />
                       <Route path="/competitor-analysis" element={
                         <ProtectedRoute>
-                          <ComingSoon />
+                          <CompetitorAnalysis />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/competitor-analysis/new" element={
+                        <ProtectedRoute>
+                          <CompetitorAnalysisNew />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/competitor-analysis/history" element={
+                        <ProtectedRoute>
+                          <CompetitorAnalysisHistory />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/competitor-analysis/:productId" element={
+                        <ProtectedRoute>
+                          <CompetitorAnalysisDetail />
                         </ProtectedRoute>
                       } />
                       <Route path="/customer-finding" element={
@@ -179,9 +199,11 @@ const App = () => (
         <AuthProvider>
           <AnalysisProvider>
             <ValidationProvider>
-              <AppContent />
-              <Toaster />
-              <Sonner />
+              <CompetitorProvider>
+                <AppContent />
+                <Toaster />
+                <Sonner />
+              </CompetitorProvider>
             </ValidationProvider>
           </AnalysisProvider>
         </AuthProvider>

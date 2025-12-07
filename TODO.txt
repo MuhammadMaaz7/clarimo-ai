@@ -34,3 +34,31 @@
 
 Recommendations should not be hardcoded
 Something other than only LLM calls
+
+## Module 3 - Competitor Analysis (2025-12-07)
+
+✅ DONE - Simplified to 3 clear tabs:
+- TAB 1: COMPETITORS - Clean list with real data, pricing, features
+- TAB 2: FEATURE COMPARISON - Only shows if real data exists, otherwise shows "Limited data" message
+- TAB 3: MARKET ANALYSIS - Honest assessment with challenges, opportunities, recommendations
+
+✅ DONE - Removed bias and fake metrics:
+- Removed fake "unique strengths" that just repeated user input
+- Removed misleading metric cards (opportunities count, strengths count)
+- LLM prompts now explicitly demand honest, factual analysis
+- Temperature lowered to 0.1 for more factual responses
+- Will tell user if market is saturated or they have no real advantages
+- Feature comparison only shows when we have actual scraped data
+
+✅ DONE - Fixed search relevance (finding wrong competitors):
+- Keyword extractor now preserves meaningful PHRASES instead of single words
+  Example: "CodeSnippetVault" -> "code snippet manager" (not just "code", "snippet")
+- Search queries now combine keywords to form product categories
+  Example: "code snippet software" instead of "code software"
+- Filters out generic terms (app, software, tool, platform) from single-word searches
+- Added SEMANTIC FILTERING using TF-IDF + cosine similarity
+  * Compares competitor descriptions to user's product description
+  * Automatically filters out irrelevant results (e.g., VS Code when searching for snippet managers)
+  * No hardcoded rules - uses ML to determine relevance
+  * Minimum similarity threshold: 0.15 (adjustable)
+  * Ranks by: relevance_score × semantic_similarity

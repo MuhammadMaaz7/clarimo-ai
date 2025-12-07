@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { User, Mail, Settings, History, CheckCircle } from 'lucide-react';
+import { User, Mail, Settings, History, CheckCircle, Target } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 
@@ -208,6 +208,14 @@ const Profile = () => {
               >
                 <History className="h-4 w-4 mr-3 text-green-400" />
                 My Discovered Problems
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-white/10"
+                onClick={() => navigate('/competitor-analysis/history')}
+              >
+                <Target className="h-4 w-4 mr-3 text-purple-400" />
+                My Competitor Analyses
               </Button>
             </CardContent>
           </Card>

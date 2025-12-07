@@ -59,14 +59,14 @@ FAISS_INDEX_FILENAME = "faiss_index.bin"
 EMBED_MATRIX_FILENAME = "embeddings.npy"
 
 # ------------------------
-# GLOBAL MODEL SINGLETON - SHARED ACROSS ALL INSTANCES
+# GLOBAL MODEL SINGLETON - LAZY LOADING (only when needed)
 # ------------------------
 _MODEL_INSTANCE = None
 _MODEL_LOADING = False  # Prevent concurrent loading
 
 def get_global_model(use_gpu: bool = False) -> SentenceTransformer:
     """
-    Get the optimized global model singleton - loads once, shared by all embedding requests
+    Get the optimized global model singleton - LAZY LOADS on first use
     
     Args:
         use_gpu: Whether to use GPU acceleration
@@ -80,7 +80,7 @@ def get_global_model(use_gpu: bool = False) -> SentenceTransformer:
         _MODEL_LOADING = True
         try:
             device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
-            logger.info(f"🌍 Loading optimized global embedding model singleton: {MODEL_NAME}")
+            logger.info(f"⏳ Loading embedding model (first use only): {MODEL_NAME}")
             logger.info(f"🔧 Device: {device.upper()}")
             
             # Load model with optimizations

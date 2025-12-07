@@ -19,6 +19,19 @@ class ExternalDataService:
         self.play_store_api_base = "https://serpapi.com/search"  # Alternative: use web scraping
         self.timeout = 10.0
     
+    # Public methods for competitor analysis
+    async def search_github(self, keywords: List[str], max_results: int = 10) -> Dict[str, Any]:
+        """Public method to search GitHub"""
+        return await self._search_github(keywords, max_results)
+    
+    async def search_app_store(self, query: str, max_results: int = 10) -> Dict[str, Any]:
+        """Public method to search App Store"""
+        return await self._search_app_store([query], max_results)
+    
+    async def search_play_store(self, query: str, max_results: int = 10) -> Dict[str, Any]:
+        """Public method to search Play Store"""
+        return await self._search_play_store([query], max_results)
+    
     async def search_similar_products(
         self,
         keywords: List[str],

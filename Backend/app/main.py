@@ -1,3 +1,7 @@
+# Optimize startup FIRST (suppress warnings, faster loading)
+from app.core.startup_optimizer import optimize_startup
+optimize_startup()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,6 +24,11 @@ from app.api.module1_pain_points.routes_ranking import router as ranking_router
 from app.api.module2_validation.routes_ideas import router as ideas_router
 from app.api.module2_validation.routes_validations import router as validations_router
 from app.api.module2_validation.routes_shared import router as shared_router
+
+# Module 3: Competitor Analysis routes
+from app.api.module3_competitor_analysis.routes_products import router as products_router
+from app.api.module3_competitor_analysis.routes_analyses import router as analyses_router
+from app.api.module3_competitor_analysis.routes_production import router as production_router
 
 app = FastAPI(title="Clarimo AI API")
 
@@ -46,6 +55,9 @@ app.include_router(processing_status_router, prefix="/api")
 app.include_router(ideas_router, prefix="/api")
 app.include_router(validations_router, prefix="/api")
 app.include_router(shared_router, prefix="/api")  # Public shared validations (no auth required)
+app.include_router(products_router, prefix="/api")
+app.include_router(analyses_router, prefix="/api")
+app.include_router(production_router, prefix="/api")  # Production-ready competitor analysis
 
 @app.get("/")
 async def root():

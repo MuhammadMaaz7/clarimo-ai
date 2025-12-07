@@ -41,6 +41,10 @@ httpx
 # App store scraping
 google-play-scraper
 
+# Web scraping
+beautifulsoup4
+lxml
+
 # Pain points extraction dependencies
 groq
 

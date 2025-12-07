@@ -879,6 +879,252 @@ export const api = {
       }),
   },
 
+  // Competitor Analysis endpoints - Module 3
+  products: {
+    create: (data: {
+      productName: string;
+      productDescription: string;
+      keyFeatures: string[];
+    }) =>
+      apiRequest<{
+        id: string;
+        user_id: string;
+        product_name: string;
+        product_description: string;
+        key_features: string[];
+        created_at: string;
+        updated_at: string;
+      }>('/products/', {
+        method: 'POST',
+        body: JSON.stringify({
+          product_name: data.productName,
+          product_description: data.productDescription,
+          key_features: data.keyFeatures,
+        }),
+      }),
+
+    getAll: () =>
+      apiRequest<Array<{
+        id: string;
+        user_id: string;
+        product_name: string;
+        product_description: string;
+        key_features: string[];
+        created_at: string;
+        updated_at: string;
+        latest_analysis?: {
+          analysis_id: string;
+          competitors_found: number;
+          status: string;
+          created_at: string;
+        };
+      }>>('/products/'),
+
+    getById: (productId: string) =>
+      apiRequest<{
+        id: string;
+        user_id: string;
+        product_name: string;
+        product_description: string;
+        key_features: string[];
+        created_at: string;
+        updated_at: string;
+        latest_analysis?: {
+          analysis_id: string;
+          competitors_found: number;
+          status: string;
+          created_at: string;
+        };
+      }>(`/products/${productId}`),
+
+    update: (productId: string, data: {
+      productName?: string;
+      productDescription?: string;
+      keyFeatures?: string[];
+    }) =>
+      apiRequest<{
+        id: string;
+        user_id: string;
+        product_name: string;
+        product_description: string;
+        key_features: string[];
+        created_at: string;
+        updated_at: string;
+      }>(`/products/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          product_name: data.productName,
+          product_description: data.productDescription,
+          key_features: data.keyFeatures,
+        }),
+      }),
+
+    delete: (productId: string) =>
+      apiRequest<void>(`/products/${productId}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  competitorAnalyses: {
+    // NEW: Production-ready competitor analysis endpoints
+    analyze: (data: {
+      name: string;
+      description: string;
+      features: string[];
+      pricing?: string;
+      target_audience?: string;
+    }) =>
+      apiRequest<{
+        success: boolean;
+        analysis_id: string;
+        execution_time: number;
+        product: {
+          name: string;
+          description: string;
+          features: string[];
+          pricing?: string;
+        };
+        top_competitors: Array<{
+          name: string;
+          description: string;
+          url: string;
+          features: string[];
+          pricing?: string;
+          target_audience?: string;
+          source: string;
+        }>;
+        feature_matrix: {
+          features: string[];
+          products: Array<{
+            name: string;
+            is_user_product: boolean;
+            feature_support: Record<string, boolean>;
+          }>;
+        };
+        comparison: {
+          pricing: {
+            user_product: string;
+            competitors: Array<{
+              name: string;
+              pricing: string;
+            }>;
+          };
+          feature_count: {
+            user_product: number;
+            competitors: Array<{
+              name: string;
+              count: number;
+            }>;
+          };
+          positioning: string;
+        };
+        gap_analysis: {
+          opportunities: string[];
+          unique_strengths: string[];
+          areas_to_improve: string[];
+          market_gaps: string[];
+        };
+        insights: {
+          market_position: string;
+          competitive_advantages: string[];
+          differentiation_strategy: string;
+          recommendations: string[];
+        };
+        metadata: {
+          total_competitors_analyzed: number;
+          timestamp: string;
+        };
+      }>('/competitor-analysis/analyze', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // List all analyses for current user
+    list: () =>
+      apiRequest<{
+        success: boolean;
+        analyses: Array<{
+          analysis_id: string;
+          product_name: string;
+          competitors_found: number;
+          created_at: string;
+          status: string;
+        }>;
+        total: number;
+      }>('/competitor-analysis/analyses'),
+
+    // Get specific analysis by ID
+    getById: (analysisId: string) =>
+      apiRequest<{
+        success: boolean;
+        analysis_id: string;
+        execution_time: number;
+        product: any;
+        top_competitors: any[];
+        feature_matrix: any;
+        comparison: any;
+        gap_analysis: any;
+        insights: any;
+        metadata: any;
+      }>(`/competitor-analysis/analyses/${analysisId}`),
+
+    // Legacy endpoints (keep for backward compatibility)
+    start: (productId: string) =>
+      apiRequest<{
+        analysis_id: string;
+        product_id: string;
+        user_id: string;
+        status: string;
+        competitors: any[];
+        market_insights: any;
+        positioning_analysis: any;
+        feature_comparison: any[];
+        recommendations: string[];
+        created_at: string;
+        completed_at: string | null;
+        error_message: string | null;
+      }>('/analyses/', {
+        method: 'POST',
+        body: JSON.stringify({ product_id: productId }),
+      }),
+
+    getResult: (analysisId: string) =>
+      apiRequest<{
+        analysis_id: string;
+        product_id: string;
+        user_id: string;
+        status: string;
+        competitors: any[];
+        market_insights: any;
+        positioning_analysis: any;
+        feature_comparison: any[];
+        recommendations: string[];
+        created_at: string;
+        completed_at: string | null;
+        error_message: string | null;
+      }>(`/analyses/${analysisId}`),
+
+    getStatus: (analysisId: string) =>
+      apiRequest<{
+        analysis_id: string;
+        status: string;
+        progress: number;
+        current_stage: string;
+        estimated_completion: string | null;
+      }>(`/analyses/status/${analysisId}`),
+
+    getHistory: (productId: string) =>
+      apiRequest<Array<{
+        analysis_id: string;
+        product_id: string;
+        competitors_found: number;
+        opportunity_score: number;
+        status: string;
+        created_at: string;
+        completed_at: string | null;
+      }>>(`/analyses/product/${productId}/history`),
+  },
+
   // Pain points endpoints - CORRECTED
   painPoints: {
     extract: (data: {
