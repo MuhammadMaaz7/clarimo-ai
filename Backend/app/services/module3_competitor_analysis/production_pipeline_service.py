@@ -70,33 +70,53 @@ class ProductionPipelineService:
         
         try:
             # Step 1: Generate Keywords
-            logger.info("Step 1/5: Generating search keywords...")
+            logger.info("Step 1/7: Generating search keywords...")
             keywords = await ProductionPipelineService._generate_keywords(product_info)
             logger.info(f"✓ Generated {len(keywords)} keywords: {', '.join(keywords)}")
             
-            # Step 2: Discover Competitors
-            logger.info("Step 2/5: Discovering competitors from multiple sources...")
-            competitors = await ProductionPipelineService._discover_competitors(
+            # Step 2: Fetch Competitors from APIs (Product Hunt, Google, GitHub, Play Store)
+            logger.info("Step 2/7: Fetching competitors from multiple sources...")
+            raw_competitors = await ProductionPipelineService._fetch_competitors_from_apis(
                 product_info, keywords
             )
-            logger.info(f"✓ Discovered {len(competitors)} competitors")
+            logger.info(f"✓ Fetched {len(raw_competitors)} raw competitors")
             
-            # Step 3: Enrich Top Competitors
-            logger.info("Step 3/5: Enriching top competitors with detailed data...")
-            enriched = await ProductionPipelineService._enrich_competitors(competitors)
-            logger.info(f"✓ Enriched {sum(1 for c in enriched if c.get('enriched'))} competitors")
+            # Step 3: Filter out blogs, Reddit, non-competitor URLs
+            logger.info("Step 3/7: Filtering out blogs, Reddit, and non-competitor URLs...")
+            filtered_competitors = ProductionPipelineService._filter_non_competitors(raw_competitors)
+            logger.info(f"✓ After filtering: {len(filtered_competitors)} valid competitors")
             
-            # Step 4: Analyze & Compare
-            logger.info("Step 4/5: Analyzing competitive landscape...")
-            analysis = await ProductionPipelineService._analyze_competitors(
-                product_info, enriched
+            # Step 4: Compute Similarity & Classify (Direct/Indirect/Not a Competitor)
+            logger.info("Step 4/7: Computing similarity and classifying competitors...")
+            classified_competitors = ProductionPipelineService._classify_competitors(
+                product_info, filtered_competitors
             )
-            logger.info(f"✓ Analysis complete")
+            logger.info(f"✓ Classified: {sum(1 for c in classified_competitors if c.get('competitor_type') == 'direct')} direct, "
+                       f"{sum(1 for c in classified_competitors if c.get('competitor_type') == 'indirect')} indirect")
             
-            # Step 5: Build Clean Response
-            logger.info("Step 5/5: Preparing results...")
+            # Step 5: LLM Verification - Select Top 5 Competitors
+            logger.info("Step 5/7: LLM verification - selecting top 5 competitors...")
+            top_5_competitors = await ProductionPipelineService._llm_select_top_competitors(
+                product_info, classified_competitors
+            )
+            logger.info(f"✓ LLM selected top {len(top_5_competitors)} competitors")
+            
+            # Step 6: Web Scraping - Extract Features & Pricing for Top 5
+            logger.info("Step 6/7: Web scraping top competitors for features and pricing...")
+            enriched_top_5 = await ProductionPipelineService._scrape_top_competitors(top_5_competitors)
+            logger.info(f"✓ Scraped {sum(1 for c in enriched_top_5 if c.get('enriched'))} competitors")
+            
+            # Step 7: LLM Structures Output for Comparison Dashboard
+            logger.info("Step 7/7: LLM structuring output for comparison dashboard...")
+            final_analysis = await ProductionPipelineService._llm_structure_output(
+                product_info, enriched_top_5, classified_competitors
+            )
+            logger.info(f"✓ Analysis structured for dashboard")
+            
+            # Build Final Response
             response = ProductionPipelineService._build_clean_response(
-                product_info, keywords, enriched, analysis, analysis_id, time.time() - start_time
+                product_info, keywords, enriched_top_5, classified_competitors, 
+                final_analysis, analysis_id, time.time() - start_time
             )
             
             logger.info(f"="*80)
@@ -156,11 +176,14 @@ class ProductionPipelineService:
             return product_info['description'].split()[:5]
     
     @staticmethod
-    async def _discover_competitors(
+    async def _fetch_competitors_from_apis(
         product_info: Dict[str, Any],
         keywords: List[str]
     ) -> List[Dict[str, Any]]:
-        """Discover competitors from all sources"""
+        """
+        Step 2: Fetch competitors from APIs (Product Hunt, Google, GitHub, Play Store)
+        Returns raw competitor data without filtering or classification
+        """
         all_competitors = []
         
         # Fetch from all sources concurrently
@@ -184,8 +207,130 @@ class ProductionPipelineService:
             if result:
                 all_competitors.extend(result.get('competitors', []))
         
-        logger.info(f"Fetched {len(all_competitors)} total competitors")
         return all_competitors
+    
+    @staticmethod
+    def _filter_non_competitors(competitors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Step 3: Filter out blogs, Reddit, and non-competitor URLs
+        Removes articles, listicles, review sites, government sites, etc.
+        """
+        def is_valid_competitor(comp: dict) -> bool:
+            """Filter out non-competitors"""
+            name = comp.get("name", "").lower()
+            description = comp.get("description", "").lower()
+            url = comp.get("url", "").lower()
+            source = comp.get("source", "")
+            
+            # Always keep Product Hunt, GitHub, App Store, Play Store
+            if source in ['product_hunt', 'github', 'app_store', 'play_store']:
+                return True
+            
+            # For web sources, apply strict filtering
+            
+            # Exclude Reddit URLs
+            if 'reddit.com' in url:
+                logger.debug(f"Filtered Reddit URL: {name}")
+                return False
+            
+            # Exclude article/blog indicators in name
+            article_indicators = [
+                'best', 'top', 'alternatives', 'vs', 'comparison', 'review',
+                'guide', 'how to', 'tips', 'essential', 'recommended',
+                'blog', 'article', 'news', 'approved', 'certification',
+                'screening', 'survey', 'analysis software', 'tools for'
+            ]
+            
+            # Check if name looks like an article title
+            for indicator in article_indicators:
+                if indicator in name[:40]:
+                    logger.debug(f"Filtered article: {name}")
+                    return False
+            
+            # Exclude government, academic, review sites
+            exclude_domains = [
+                # Review/comparison sites
+                'forbes.com', 'techcrunch.com', 'capterra.com', 'g2.com',
+                'peoplemanagingpeople.com', 'thedigitalprojectmanager.com',
+                'buffer.com', 'hubspot.com', 'trustpilot.com',
+                # Government/academic
+                '.gov', '.edu', 'usda.gov', 'fns.usda', 'ers.usda',
+                'pubmed', 'nih.gov', 'biomedcentral.com',
+                # Tool/equipment sellers (not software)
+                'krstrikeforce.com', 'homedepot.com',
+                # Generic info sites
+                'wikipedia.org', 'youtube.com', 'reddit.com'
+            ]
+            
+            for domain in exclude_domains:
+                if domain in url:
+                    logger.debug(f"Filtered excluded domain: {name} ({domain})")
+                    return False
+            
+            # Exclude URLs with article/blog paths
+            exclude_paths = [
+                '/blog/', '/article/', '/news/', '/press/',
+                '/resources/', '/guides/', '/products/ball-workout-tool'
+            ]
+            
+            for path in exclude_paths:
+                if path in url:
+                    logger.debug(f"Filtered blog/article path: {name}")
+                    return False
+            
+            # Must have a reasonable name
+            if not comp.get("name") or len(comp.get("name", "")) < 2:
+                return False
+            
+            # Exclude if name has numbers at start (listicles like "10 Best...")
+            if name and name[0].isdigit():
+                logger.debug(f"Filtered listicle: {name}")
+                return False
+            
+            # For web sources, must be a clean product domain
+            if source == 'web' or source == 'google_search':
+                # Must end with product domain
+                product_domains = ['.com', '.io', '.app', '.co', '.ai']
+                has_product_domain = any(url.endswith(domain) or f'{domain}/' in url for domain in product_domains)
+                
+                if not has_product_domain:
+                    logger.debug(f"Filtered non-product domain: {name}")
+                    return False
+                
+                # URL should be short (product homepage, not deep article)
+                url_parts = url.split('/')
+                if len(url_parts) > 5:  # Too many path segments = likely article
+                    logger.debug(f"Filtered deep URL: {name}")
+                    return False
+            
+            return True
+        
+        filtered = [comp for comp in competitors if is_valid_competitor(comp)]
+        logger.info(f"Filtered {len(competitors) - len(filtered)} non-competitors")
+        return filtered
+    
+    @staticmethod
+    def _classify_competitors(
+        product_info: Dict[str, Any],
+        competitors: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Step 4: Compute similarity and classify as Direct/Indirect/Not a Competitor
+        Uses CompetitorClassifier to calculate similarity scores
+        """
+        from .competitor_classifier import CompetitorClassifier
+        
+        classified = CompetitorClassifier.classify_competitors(
+            product_info=product_info,
+            competitors=competitors
+        )
+        
+        # Get classification summary
+        summary = CompetitorClassifier.get_classification_summary(classified)
+        logger.info(f"Direct: {summary['direct']}, Indirect: {summary['indirect']}, "
+                   f"Avg similarity (direct): {summary['avg_similarity_direct']:.3f}")
+        
+        return classified
     
     @staticmethod
     async def _fetch_product_hunt(keywords: List[str]) -> Dict[str, Any]:
@@ -299,20 +444,140 @@ class ProductionPipelineService:
             return {"competitors": []}
     
     @staticmethod
-    async def _enrich_competitors(
-        competitors: List[Dict[str, Any]]
+    async def _llm_select_top_competitors(
+        product_info: Dict[str, Any],
+        classified_competitors: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """Enrich top competitors with web scraping (only Google results)"""
+        """
+        Step 5: LLM Verification - Select Top 5 Competitors
+        LLM reviews all classified competitors and selects the most relevant 5
+        """
+        # If we have 5 or fewer, return all
+        if len(classified_competitors) <= 5:
+            return classified_competitors
+        
+        # Prepare prompt for LLM
+        prompt = f"""You are a competitive intelligence analyst. Review the following competitors and select the TOP 5 most relevant competitors for the user's product.
+
+USER'S PRODUCT:
+Name: {product_info['name']}
+Description: {product_info['description']}
+Features: {', '.join(product_info.get('features', []))}
+
+COMPETITORS TO REVIEW ({len(classified_competitors)} total):
+"""
+        
+        for i, comp in enumerate(classified_competitors[:20], 1):  # Limit to top 20 for token efficiency
+            comp_type = comp.get('competitor_type', 'unknown')
+            similarity = comp.get('similarity_score', 0)
+            prompt += f"\n{i}. {comp['name']} ({comp_type.upper()}, {similarity*100:.1f}% similar)"
+            prompt += f"\n   Source: {comp.get('source')}"
+            prompt += f"\n   Description: {comp.get('description', 'N/A')[:100]}"
+        
+        prompt += """
+
+INSTRUCTIONS:
+1. Select the TOP 5 most relevant competitors
+2. Prioritize DIRECT competitors over indirect
+3. Consider similarity scores, descriptions, and sources
+4. Return ONLY a JSON array of competitor names
+
+Example response:
+["Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4", "Competitor 5"]
+
+Return ONLY the JSON array, nothing else:"""
+        
+        try:
+            # Try to get LLM selection
+            from .llm_keyword_service import LLMKeywordService
+            import json
+            import re
+            
+            # Use the same LLM service
+            groq_keys = LLMKeywordService._get_groq_keys()
+            
+            if groq_keys:
+                import requests
+                
+                for api_key in groq_keys:
+                    try:
+                        response = requests.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {api_key}",
+                                "Content-Type": "application/json"
+                            },
+                            json={
+                                "model": "llama-3.3-70b-versatile",
+                                "messages": [
+                                    {"role": "system", "content": "You are a competitive intelligence analyst. Return only valid JSON."},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                "temperature": 0.1,
+                                "max_tokens": 500
+                            },
+                            timeout=15
+                        )
+                        
+                        if response.status_code == 200:
+                            llm_response = response.json()["choices"][0]["message"]["content"].strip()
+                            
+                            # Extract JSON array
+                            json_match = re.search(r'\[.*?\]', llm_response, re.DOTALL)
+                            if json_match:
+                                selected_names = json.loads(json_match.group())
+                                
+                                # Find competitors by name
+                                top_5 = []
+                                for name in selected_names[:5]:
+                                    for comp in classified_competitors:
+                                        if comp['name'].lower() == name.lower():
+                                            top_5.append(comp)
+                                            break
+                                
+                                if len(top_5) >= 3:  # At least 3 valid selections
+                                    logger.info(f"LLM selected: {[c['name'] for c in top_5]}")
+                                    return top_5
+                        
+                    except Exception as e:
+                        logger.warning(f"LLM selection attempt failed: {str(e)}")
+                        continue
+        
+        except Exception as e:
+            logger.warning(f"LLM selection failed: {str(e)}")
+        
+        # Fallback: Select top 5 by quality score
+        logger.info("Using fallback selection (quality score)")
+        scored = []
+        for comp in classified_competitors:
+            score = 0
+            # Prioritize direct competitors
+            if comp.get('competitor_type') == 'direct':
+                score += 10
+            # Add similarity score
+            score += comp.get('similarity_score', 0) * 10
+            # Add data quality
+            if comp.get('description'): score += 2
+            if comp.get('features'): score += 3
+            if comp.get('url'): score += 1
+            
+            scored.append({**comp, 'selection_score': score})
+        
+        sorted_comps = sorted(scored, key=lambda x: x['selection_score'], reverse=True)
+        return sorted_comps[:5]
+    
+    @staticmethod
+    async def _scrape_top_competitors(
+        top_competitors: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Step 6: Web Scraping - Extract Features & Pricing for Top 5
+        Scrapes competitor websites to get detailed feature lists and pricing
+        """
         scraper = get_web_scraper_service()
         enriched = []
         
-        # Only scrape Google results (they need enrichment)
-        google_comps = [c for c in competitors if c.get('source') == 'google_search']
-        other_comps = [c for c in competitors if c.get('source') != 'google_search']
-        
-        # Scrape top 5 Google results
-        scraped_count = 0
-        for comp in google_comps[:5]:
+        for comp in top_competitors:
             if not comp.get('url'):
                 enriched.append(comp)
                 continue
@@ -327,39 +592,53 @@ class ProductionPipelineService:
                         'features': result.get('features', []),
                         'pricing': result.get('pricing'),
                         'target_audience': result.get('target_audience'),
-                        'product_type': result.get('product_type')
+                        'product_type': result.get('product_type'),
+                        'key_benefits': result.get('key_benefits', [])
                     })
-                    scraped_count += 1
-                    logger.info(f"  ✓ Enriched: {comp['name']}")
+                    logger.info(f"  ✓ Scraped: {comp['name']}")
                 else:
                     enriched.append(comp)
+                    logger.warning(f"  ✗ Scraping failed: {comp['name']}")
             except Exception as e:
-                logger.warning(f"  ✗ Failed to enrich {comp['name']}: {str(e)}")
+                logger.warning(f"  ✗ Failed to scrape {comp['name']}: {str(e)}")
                 enriched.append(comp)
         
-        # Add remaining competitors
-        enriched.extend(google_comps[5:])
-        enriched.extend(other_comps)
-        
-        logger.info(f"Enriched {scraped_count} competitors with detailed data")
         return enriched
     
     @staticmethod
-    async def _analyze_competitors(
+    async def _llm_structure_output(
         product_info: Dict[str, Any],
-        competitors: List[Dict[str, Any]]
+        top_5_enriched: List[Dict[str, Any]],
+        all_classified_competitors: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Analyze competitors and generate insights"""
+        """
+        Step 7: LLM Structures Output for Comparison Dashboard
+        LLM takes scraped data and structures it for frontend display
+        """
         try:
-            # Local analysis on all competitors
-            preprocessed = await IntelligentAnalysisService.analyze_competitors(
-                product_info=product_info,
-                competitors=competitors,
-                max_competitors_for_llm=15,
-                use_local_analysis=True
-            )
+            # Prepare data for LLM
+            preprocessed = {
+                "statistics": {
+                    "total_competitors": len(all_classified_competitors),
+                    "direct_competitors": sum(1 for c in all_classified_competitors if c.get('competitor_type') == 'direct'),
+                    "indirect_competitors": sum(1 for c in all_classified_competitors if c.get('competitor_type') == 'indirect')
+                },
+                "top_competitors": top_5_enriched,
+                "all_features": [],
+                "pricing_info": []
+            }
             
-            # LLM analysis for insights
+            # Collect features and pricing from enriched competitors
+            for comp in top_5_enriched:
+                if comp.get('features'):
+                    preprocessed["all_features"].extend(comp['features'])
+                if comp.get('pricing'):
+                    preprocessed["pricing_info"].append({
+                        "competitor": comp['name'],
+                        "pricing": comp['pricing']
+                    })
+            
+            # LLM analysis for insights and structuring
             llm_analysis = await LLMAnalysisService.generate_competitive_analysis(
                 product_info=product_info,
                 preprocessed_data=preprocessed
@@ -370,38 +649,68 @@ class ProductionPipelineService:
                 "llm_analysis": llm_analysis
             }
         except Exception as e:
-            logger.error(f"Analysis failed: {str(e)}")
+            logger.error(f"LLM structuring failed: {str(e)}")
             return {"preprocessed": {}, "llm_analysis": {}}
     
     @staticmethod
     def _build_clean_response(
         product_info: Dict[str, Any],
         keywords: List[str],
-        competitors: List[Dict[str, Any]],
-        analysis: Dict[str, Any],
+        top_5_enriched: List[Dict[str, Any]],
+        all_classified_competitors: List[Dict[str, Any]],
+        final_analysis: Dict[str, Any],
         analysis_id: str,
         execution_time: float
     ) -> Dict[str, Any]:
         """Build clean, user-friendly response for frontend"""
         
-        preprocessed = analysis.get('preprocessed', {})
-        llm_analysis = analysis.get('llm_analysis', {})
+        preprocessed = final_analysis.get('preprocessed', {})
+        llm_analysis = final_analysis.get('llm_analysis', {})
         
-        # Select top 5 competitors (best quality data)
-        top_competitors = ProductionPipelineService._select_top_competitors(competitors, 5)
+        # Get classification summary from all competitors
+        from .competitor_classifier import CompetitorClassifier
+        classification_summary = CompetitorClassifier.get_classification_summary(all_classified_competitors)
         
-        # Build feature matrix
+        # Clean top 5 competitors for response
+        clean_top_5 = []
+        for comp in top_5_enriched:
+            clean_comp = {
+                "name": comp['name'],
+                "description": comp.get('description', ''),
+                "url": comp.get('url', ''),
+                "features": comp.get('features', []),
+                "pricing": comp.get('pricing'),
+                "target_audience": comp.get('target_audience'),
+                "source": comp.get('source', 'unknown'),
+                "competitor_type": comp.get('competitor_type'),
+                "similarity_score": comp.get('similarity_score')
+            }
+            clean_top_5.append(clean_comp)
+        
+        # Build feature matrix from enriched top 5
         feature_matrix = ProductionPipelineService._build_feature_matrix(
-            product_info, top_competitors
+            product_info, top_5_enriched
         )
         
         # Build comparison data
         comparison = ProductionPipelineService._build_comparison(
-            product_info, top_competitors, llm_analysis
+            product_info, top_5_enriched, llm_analysis
         )
         
         # Build gap analysis
         gap_analysis = ProductionPipelineService._build_gap_analysis(llm_analysis)
+        
+        # Calculate market saturation
+        total_comps = len(all_classified_competitors)
+        if total_comps < 5:
+            market_saturation = "low"
+            opportunity_score = 8.5
+        elif total_comps < 15:
+            market_saturation = "medium"
+            opportunity_score = 6.5
+        else:
+            market_saturation = "high"
+            opportunity_score = 4.5
         
         return {
             "success": True,
@@ -416,8 +725,8 @@ class ProductionPipelineService:
                 "pricing": product_info.get('pricing')
             },
             
-            # Top competitors (clean, user-friendly)
-            "top_competitors": top_competitors,
+            # Top 5 competitors (LLM selected + scraped)
+            "top_competitors": clean_top_5,
             
             # Feature comparison matrix
             "feature_matrix": feature_matrix,
@@ -428,7 +737,7 @@ class ProductionPipelineService:
             # Gap analysis
             "gap_analysis": gap_analysis,
             
-            # Strategic insights
+            # Strategic insights (LLM structured)
             "insights": {
                 "market_position": llm_analysis.get('market_position', ''),
                 "competitive_advantages": llm_analysis.get('competitive_advantages', []),
@@ -436,49 +745,27 @@ class ProductionPipelineService:
                 "recommendations": llm_analysis.get('recommendations', [])
             },
             
-            # Metadata (minimal)
+            # Market insights with classification
+            "market_insights": {
+                "total_competitors": total_comps,
+                "direct_competitors": classification_summary['direct'],
+                "indirect_competitors": classification_summary['indirect'],
+                "market_saturation": market_saturation,
+                "opportunity_score": opportunity_score
+            },
+            
+            # Classification summary
+            "classification_summary": classification_summary,
+            
+            # Metadata
             "metadata": {
-                "total_competitors_analyzed": len(competitors),
+                "total_competitors_analyzed": total_comps,
+                "top_competitors_selected": len(top_5_enriched),
                 "timestamp": datetime.now().isoformat()
             }
         }
     
-    @staticmethod
-    def _select_top_competitors(
-        competitors: List[Dict[str, Any]],
-        count: int = 5
-    ) -> List[Dict[str, Any]]:
-        """Select top N competitors based on data quality"""
-        scored = []
-        
-        for comp in competitors:
-            score = 0
-            if comp.get('description'): score += 3
-            if comp.get('features'): score += 5
-            if comp.get('pricing'): score += 2
-            if comp.get('url'): score += 1
-            if comp.get('enriched'): score += 3
-            
-            scored.append({**comp, 'quality_score': score})
-        
-        # Sort by score and return top N
-        sorted_comps = sorted(scored, key=lambda x: x['quality_score'], reverse=True)
-        
-        # Clean up (remove internal fields)
-        clean_comps = []
-        for comp in sorted_comps[:count]:
-            clean = {
-                "name": comp['name'],
-                "description": comp.get('description', ''),
-                "url": comp.get('url', ''),
-                "features": comp.get('features', []),
-                "pricing": comp.get('pricing'),
-                "target_audience": comp.get('target_audience'),
-                "source": comp.get('source', 'unknown')
-            }
-            clean_comps.append(clean)
-        
-        return clean_comps
+
     
     @staticmethod
     def _build_feature_matrix(

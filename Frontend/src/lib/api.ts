@@ -992,6 +992,8 @@ export const api = {
           pricing?: string;
           target_audience?: string;
           source: string;
+          competitor_type?: 'direct' | 'indirect';
+          similarity_score?: number;
         }>;
         feature_matrix: {
           features: string[];
@@ -1029,6 +1031,26 @@ export const api = {
           competitive_advantages: string[];
           differentiation_strategy: string;
           recommendations: string[];
+        };
+        market_insights?: {
+          total_competitors: number;
+          direct_competitors?: number;
+          indirect_competitors?: number;
+          market_saturation: 'low' | 'medium' | 'high';
+          opportunity_score: number;
+        };
+        classification_summary?: {
+          total: number;
+          direct: number;
+          indirect: number;
+          direct_percentage: number;
+          avg_similarity_direct: number;
+          avg_similarity_indirect: number;
+          top_direct_competitors: Array<{
+            name: string;
+            similarity: number;
+            source: string;
+          }>;
         };
         metadata: {
           total_competitors_analyzed: number;

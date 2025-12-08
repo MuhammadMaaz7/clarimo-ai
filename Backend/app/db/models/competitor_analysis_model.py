@@ -32,11 +32,15 @@ class Competitor(BaseModel):
     strengths: Optional[List[str]] = None
     weaknesses: Optional[List[str]] = None
     market_position: Optional[Literal['leader', 'challenger', 'niche', 'emerging']] = None
+    competitor_type: Optional[Literal['direct', 'indirect']] = None  # Direct or indirect competitor
+    similarity_score: Optional[float] = None  # Similarity score (0-1) to user's product
 
 
 class MarketInsights(BaseModel):
     """Market insights from analysis"""
     total_competitors: int
+    direct_competitors: Optional[int] = None
+    indirect_competitors: Optional[int] = None
     market_saturation: Literal['low', 'medium', 'high']
     opportunity_score: float = Field(..., ge=0, le=10)
     key_trends: List[str]

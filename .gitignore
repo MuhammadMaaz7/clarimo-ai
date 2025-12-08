@@ -182,3 +182,5 @@ dmypy.json
 
 # Temporary data storage
 Backend/data/
+
+venv/

@@ -422,6 +422,23 @@ class CompetitorAnalysisService:
             all_competitors = [comp for comp in raw_competitors if is_valid_competitor(comp)]
             logger.info(f"After filtering: {len(all_competitors)} valid competitors")
             
+            # Classify competitors as direct/indirect
+            from app.services.module3_competitor_analysis.competitor_classifier import CompetitorClassifier
+            
+            logger.info("Classifying competitors as direct/indirect...")
+            all_competitors = CompetitorClassifier.classify_competitors(
+                product_info={
+                    "product_name": product_name,
+                    "product_description": product_description,
+                    "key_features": key_features
+                },
+                competitors=all_competitors
+            )
+            
+            # Get classification summary
+            classification_summary = CompetitorClassifier.get_classification_summary(all_competitors)
+            logger.info(f"Classification: {classification_summary['direct']} direct, {classification_summary['indirect']} indirect")
+            
             # Enrich top competitors with web scraping (limit to top 10 to save time)
             logger.info("Enriching top competitors with web scraping...")
             scraper = get_web_scraper_service()
@@ -514,8 +531,11 @@ class CompetitorAnalysisService:
                 "keywords": keywords,
                 "keyword_method": keyword_method,
                 "competitors": all_competitors,
+                "classification_summary": classification_summary,
                 "market_insights": {
                     "total_competitors": total_competitors,
+                    "direct_competitors": classification_summary['direct'],
+                    "indirect_competitors": classification_summary['indirect'],
                     "market_saturation": market_saturation,
                     "opportunity_score": opportunity_score,
                     "key_trends": key_trends

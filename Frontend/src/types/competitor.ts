@@ -45,6 +45,8 @@ export interface Competitor {
   strengths?: string[];
   weaknesses?: string[];
   market_position?: 'leader' | 'challenger' | 'niche' | 'emerging';
+  competitor_type?: 'direct' | 'indirect';
+  similarity_score?: number;
 }
 
 // Competitive analysis result
@@ -56,9 +58,24 @@ export interface CompetitiveAnalysis {
   competitors: Competitor[];
   market_insights: {
     total_competitors: number;
+    direct_competitors?: number;
+    indirect_competitors?: number;
     market_saturation: 'low' | 'medium' | 'high';
     opportunity_score: number;
     key_trends: string[];
+  };
+  classification_summary?: {
+    total: number;
+    direct: number;
+    indirect: number;
+    direct_percentage: number;
+    avg_similarity_direct: number;
+    avg_similarity_indirect: number;
+    top_direct_competitors: Array<{
+      name: string;
+      similarity: number;
+      source: string;
+    }>;
   };
   positioning_analysis: {
     your_strengths: string[];

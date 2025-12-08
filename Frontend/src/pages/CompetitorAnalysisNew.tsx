@@ -206,8 +206,76 @@ export default function CompetitorAnalysisNew() {
                   </CardContent>
                 </Card>
               ) : (
+                <>
+                  {/* Classification Summary */}
+                  {analysisResult.market_insights?.direct_competitors !== undefined && (
+                    <Card className="glass border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Competitor Classification</CardTitle>
+                        <CardDescription>Competitors categorized by similarity to your product</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="p-4 rounded-lg bg-background/50 border border-border">
+                            <div className="text-2xl font-bold mb-1">{analysisResult.market_insights.total_competitors}</div>
+                            <div className="text-sm text-muted-foreground">Total Competitors</div>
+                          </div>
+                          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                            <div className="text-2xl font-bold text-red-600 mb-1">{analysisResult.market_insights.direct_competitors}</div>
+                            <div className="text-sm text-muted-foreground">Direct Competitors</div>
+                            <div className="text-xs text-muted-foreground mt-1">High similarity (≥25%)</div>
+                          </div>
+                          <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                            <div className="text-2xl font-bold text-yellow-600 mb-1">{analysisResult.market_insights.indirect_competitors}</div>
+                            <div className="text-sm text-muted-foreground">Indirect Competitors</div>
+                            <div className="text-xs text-muted-foreground mt-1">Medium similarity (10-24%)</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Filter Buttons */}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const directComps = analysisResult.top_competitors.filter(c => c.competitor_type === 'direct');
+                        if (directComps.length > 0) {
+                          // Scroll to first direct competitor
+                          document.getElementById('competitor-0')?.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                      Direct Only
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const indirectComps = analysisResult.top_competitors.filter(c => c.competitor_type === 'indirect');
+                        if (indirectComps.length > 0) {
+                          // Scroll to first indirect competitor
+                          const firstIndirectIndex = analysisResult.top_competitors.findIndex(c => c.competitor_type === 'indirect');
+                          document.getElementById(`competitor-${firstIndirectIndex}`)?.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+                      Indirect Only
+                    </Button>
+                  </div>
+
+                  {/* Competitors List */}
+                  {
                 analysisResult.top_competitors.map((competitor, index) => (
-                  <Card key={index} className="glass border-border/50 hover:border-primary/30 transition-colors">
+                  <Card 
+                    key={index} 
+                    id={`competitor-${index}`}
+                    className="glass border-border/50 hover:border-primary/30 transition-colors"
+                  >
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -222,6 +290,20 @@ export default function CompetitorAnalysisNew() {
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
+                            )}
+                            {competitor.competitor_type && (
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                competitor.competitor_type === 'direct' 
+                                  ? 'bg-red-500/20 text-red-600 border border-red-500/30' 
+                                  : 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
+                              }`}>
+                                {competitor.competitor_type === 'direct' ? 'Direct' : 'Indirect'}
+                              </span>
+                            )}
+                            {competitor.similarity_score !== undefined && (
+                              <span className="text-xs text-muted-foreground">
+                                {(competitor.similarity_score * 100).toFixed(0)}% similar
+                              </span>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground">Source: {competitor.source}</p>
@@ -257,7 +339,8 @@ export default function CompetitorAnalysisNew() {
                       )}
                     </CardContent>
                   </Card>
-                ))
+                ))}
+                </>
               )}
             </TabsContent>
 
