@@ -292,11 +292,6 @@ export default function IdeaListView() {
                     <p className="text-xs text-muted-foreground">
                       Created: {new Date(idea.created_at).toLocaleDateString()}
                     </p>
-                    {idea.linked_pain_points.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {idea.linked_pain_points.length} pain point(s) linked
-                      </p>
-                    )}
                   </div>
                   {idea.latest_validation?.overall_score && (
                     <div className="text-right">

@@ -619,7 +619,6 @@ export const api = {
       targetMarket: string;
       businessModel?: string;
       teamCapabilities?: string;
-      linkedPainPointIds?: string[];
     }) =>
       apiRequest<{
         id: string;
@@ -631,7 +630,6 @@ export const api = {
         target_market: string;
         business_model?: string;
         team_capabilities?: string;
-        linked_pain_points: string[];
         created_at: string;
         updated_at: string;
       }>('/ideas/', {
@@ -644,7 +642,6 @@ export const api = {
           target_market: data.targetMarket,
           business_model: data.businessModel,
           team_capabilities: data.teamCapabilities,
-          linked_pain_point_ids: data.linkedPainPointIds || [],
         }),
       }),
 
@@ -671,7 +668,6 @@ export const api = {
         target_market: string;
         business_model?: string;
         team_capabilities?: string;
-        linked_pain_points: string[];
         created_at: string;
         updated_at: string;
         latest_validation?: {
@@ -694,7 +690,6 @@ export const api = {
         target_market: string;
         business_model?: string;
         team_capabilities?: string;
-        linked_pain_points: string[];
         created_at: string;
         updated_at: string;
       }>(`/ideas/${ideaId}`),
@@ -718,7 +713,6 @@ export const api = {
         target_market: string;
         business_model?: string;
         team_capabilities?: string;
-        linked_pain_points: string[];
         created_at: string;
         updated_at: string;
       }>(`/ideas/${ideaId}`, {
@@ -740,16 +734,6 @@ export const api = {
         message: string;
       }>(`/ideas/${ideaId}`, {
         method: 'DELETE',
-      }),
-
-    linkPainPoints: (ideaId: string, painPointIds: string[]) =>
-      apiRequest<{
-        success: boolean;
-        message: string;
-        linked_pain_points: string[];
-      }>(`/ideas/${ideaId}/link-pain-points`, {
-        method: 'POST',
-        body: JSON.stringify({ pain_point_ids: painPointIds }),
       }),
   },
 

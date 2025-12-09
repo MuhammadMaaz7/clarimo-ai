@@ -16,7 +16,7 @@ class IdeaCreate(BaseModel):
     target_market: str = Field(..., min_length=5, description="Target market or audience")
     business_model: Optional[str] = Field(None, description="Business model description")
     team_capabilities: Optional[str] = Field(None, description="Team skills and capabilities")
-    linked_pain_point_ids: Optional[List[str]] = Field(default_factory=list, description="Pain point IDs from Module 1")
+
 
 
 class IdeaUpdate(BaseModel):
@@ -28,7 +28,7 @@ class IdeaUpdate(BaseModel):
     target_market: Optional[str] = Field(None, min_length=5)
     business_model: Optional[str] = None
     team_capabilities: Optional[str] = None
-    linked_pain_point_ids: Optional[List[str]] = None
+
 
 
 class LatestValidationSummary(BaseModel):
@@ -50,7 +50,6 @@ class IdeaResponse(BaseModel):
     target_market: str
     business_model: Optional[str]
     team_capabilities: Optional[str]
-    linked_pain_points: List[str]
     created_at: datetime
     updated_at: datetime
     validation_count: int = 0
@@ -69,7 +68,6 @@ class IdeaInDB(BaseModel):
     target_market: str
     business_model: Optional[str]
     team_capabilities: Optional[str]
-    linked_pain_points: List[str]
     created_at: datetime
     updated_at: datetime
     validation_count: int = 0

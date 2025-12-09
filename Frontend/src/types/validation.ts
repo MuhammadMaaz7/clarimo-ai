@@ -12,6 +12,8 @@ export interface Score {
   evidence?: Record<string, any>;
   recommendations: string[];
   metadata?: Record<string, any>;
+  error?: boolean; // Indicates if this metric failed to evaluate
+  error_message?: string; // Error message if evaluation failed
 }
 
 // Idea model
@@ -25,7 +27,6 @@ export interface Idea {
   target_market: string;
   business_model?: string;
   team_capabilities?: string;
-  linked_pain_points: string[];
   created_at: string;
   updated_at: string;
   latest_validation?: {
@@ -45,7 +46,6 @@ export interface IdeaFormData {
   targetMarket: string;
   businessModel?: string;
   teamCapabilities?: string;
-  linkedPainPointIds?: string[];
 }
 
 // Validation configuration

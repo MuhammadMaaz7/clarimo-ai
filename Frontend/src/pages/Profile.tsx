@@ -6,11 +6,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { User, Mail, Settings, History, CheckCircle, Target } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../hooks/use-toast';
+import { unifiedToast } from '../lib/toast-utils';
 
 const Profile = () => {
   const { user, logout, updateProfile } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -22,8 +21,7 @@ const Profile = () => {
   const handleSave = async () => {
     // Basic validation
     if (!formData.fullName.trim()) {
-      toast({
-        variant: "destructive",
+      unifiedToast.error({
         title: "Validation Error",
         description: "Full name is required",
       });
@@ -31,8 +29,7 @@ const Profile = () => {
     }
 
     if (!formData.email.trim()) {
-      toast({
-        variant: "destructive",
+      unifiedToast.error({
         title: "Validation Error",
         description: "Email is required",
       });
@@ -42,8 +39,7 @@ const Profile = () => {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      toast({
-        variant: "destructive",
+      unifiedToast.error({
         title: "Validation Error",
         description: "Please enter a valid email address",
       });
@@ -58,15 +54,13 @@ const Profile = () => {
         email: formData.email
       });
 
-      toast({
-        title: "Success!",
+      unifiedToast.success({
         description: "Profile updated successfully!",
       });
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast({
-        variant: "destructive",
+      unifiedToast.error({
         title: "Update Failed",
         description: error instanceof Error ? error.message : 'Failed to update profile. Please try again.',
       });

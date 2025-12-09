@@ -28,7 +28,6 @@ export default function IdeaSubmissionForm({
     targetMarket: initialData?.targetMarket || '',
     businessModel: initialData?.businessModel || '',
     teamCapabilities: initialData?.teamCapabilities || '',
-    linkedPainPointIds: initialData?.linkedPainPointIds || [],
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -45,7 +44,6 @@ export default function IdeaSubmissionForm({
         targetMarket: initialData.targetMarket || '',
         businessModel: initialData.businessModel || '',
         teamCapabilities: initialData.teamCapabilities || '',
-        linkedPainPointIds: initialData.linkedPainPointIds || [],
       });
     }
   }, [initialData]);

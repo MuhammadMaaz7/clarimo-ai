@@ -23,6 +23,8 @@ class Score(BaseModel):
     evidence: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Supporting evidence")
     recommendations: List[str] = Field(default_factory=list, description="Actionable recommendations")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata")
+    error: Optional[bool] = Field(False, description="Indicates if this metric failed to evaluate")
+    error_message: Optional[str] = Field(None, description="Error message if evaluation failed")
 
 
 class ValidationConfig(BaseModel):

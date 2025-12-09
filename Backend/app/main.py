@@ -9,26 +9,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes_auth import router as auth_router
 
 # Module 1: Pain Point Discovery routes
-from app.api.module1_pain_points.routes_problems import router as problems_router
-from app.api.module1_pain_points.routes_user_input import router as user_input_router
-from app.api.module1_pain_points.routes_keywords import router as keywords_router
-from app.api.module1_pain_points.routes_reddit import router as reddit_router
-from app.api.module1_pain_points.routes_embeddings import router as embeddings_router
-from app.api.module1_pain_points.routes_semantic_filtering import router as semantic_filtering_router
-from app.api.module1_pain_points.routes_processing_status import router as processing_status_router
-from app.api.module1_pain_points.routes_clustering import router as clustering_router
-from app.api.module1_pain_points.routes_pain_points import router as pain_points_router
-from app.api.module1_pain_points.routes_ranking import router as ranking_router
+from app.api.problem_discovery.routes_problems import router as problems_router
+from app.api.problem_discovery.routes_user_input import router as user_input_router
+from app.api.problem_discovery.routes_keywords import router as keywords_router
+from app.api.problem_discovery.routes_reddit import router as reddit_router
+from app.api.problem_discovery.routes_embeddings import router as embeddings_router
+from app.api.problem_discovery.routes_semantic_filtering import router as semantic_filtering_router
+from app.api.problem_discovery.routes_processing_status import router as processing_status_router
+from app.api.problem_discovery.routes_clustering import router as clustering_router
+from app.api.problem_discovery.routes_pain_points import router as pain_points_router
+from app.api.problem_discovery.routes_ranking import router as ranking_router
 
 # Module 2: Idea Validation routes
-from app.api.module2_validation.routes_ideas import router as ideas_router
-from app.api.module2_validation.routes_validations import router as validations_router
-from app.api.module2_validation.routes_shared import router as shared_router
+from app.api.idea_validation.routes_ideas import router as ideas_router
+from app.api.idea_validation.routes_validations import router as validations_router
+from app.api.idea_validation.routes_shared import router as shared_router
 
 # Module 3: Competitor Analysis routes
-from app.api.module3_competitor_analysis.routes_products import router as products_router
-from app.api.module3_competitor_analysis.routes_analyses import router as analyses_router
-from app.api.module3_competitor_analysis.routes_production import router as production_router
+from app.api.competitor_intelligence.routes_products import router as products_router
+from app.api.competitor_intelligence.routes_analyses import router as analyses_router
+from app.api.competitor_intelligence.routes_production import router as production_router
 
 app = FastAPI(title="Clarimo AI API")
 

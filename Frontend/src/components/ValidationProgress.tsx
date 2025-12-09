@@ -32,15 +32,8 @@ export function ValidationProgress({
   const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
   const [hasNotifiedError, setHasNotifiedError] = useState(false);
 
-  useEffect(() => {
-    // Start polling when component mounts
-    pollValidationStatus(validationId);
-
-    // Cleanup: stop polling when component unmounts
-    return () => {
-      stopPolling();
-    };
-  }, [validationId, pollValidationStatus, stopPolling]);
+  // NO POLLING NEEDED - Validation is now synchronous!
+  // The component just shows progress animation while waiting for API response
 
   useEffect(() => {
     // Update current stage based on progress

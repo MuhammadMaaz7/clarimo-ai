@@ -47,7 +47,6 @@ interface ValidationContextType {
   createIdea: (data: any) => Promise<Idea>;
   updateIdea: (ideaId: string, data: any) => Promise<Idea>;
   deleteIdea: (ideaId: string) => Promise<void>;
-  linkPainPoints: (ideaId: string, painPointIds: string[]) => Promise<void>;
 
   // Validation operations
   startValidation: (ideaId: string, config?: ValidationConfig) => Promise<ValidationResult>;
@@ -195,21 +194,7 @@ export function ValidationProvider({ children }: { children: ReactNode }) {
     }
   }, [currentIdea]);
 
-  const linkPainPoints = useCallback(async (ideaId: string, painPointIds: string[]) => {
-    setIdeasLoading(true);
-    setIdeasError(null);
-    try {
-      await api.ideas.linkPainPoints(ideaId, painPointIds);
-      // Refresh the idea to get updated pain points
-      await fetchIdeaById(ideaId);
-    } catch (error: any) {
-      setIdeasError(error.message || 'Failed to link pain points');
-      console.error('Error linking pain points:', error);
-      throw error;
-    } finally {
-      setIdeasLoading(false);
-    }
-  }, [fetchIdeaById]);
+
 
   // Validation operations
   const startValidation = useCallback(async (
@@ -220,18 +205,20 @@ export function ValidationProvider({ children }: { children: ReactNode }) {
     setValidationError(null);
     setValidationProgress(0);
     try {
+      // Validation is now SYNCHRONOUS - it waits for completion
+      // The API call will take 30-60 seconds but returns complete results
       const result = await api.validations.validate(ideaId, config);
       setCurrentValidation(result as ValidationResult);
       
-      // Start polling if validation is in progress
-      if (result.status === 'in_progress' || result.status === 'pending') {
-        pollValidationStatus(result.validation_id);
-      }
+      // Set progress to 100% since validation is complete
+      setValidationProgress(100);
+      
+      // NO POLLING NEEDED - validation is already complete!
       
       return result as ValidationResult;
     } catch (error: any) {
-      setValidationError(error.message || 'Failed to start validation');
-      console.error('Error starting validation:', error);
+      setValidationError(error.message || 'Failed to validate idea');
+      console.error('Error validating idea:', error);
       throw error;
     } finally {
       setValidationLoading(false);
@@ -247,10 +234,13 @@ export function ValidationProvider({ children }: { children: ReactNode }) {
       
       // If result has report data, set it as current report
       if (result.report_data && result.individual_scores) {
+        // Get idea title from result or current idea
+        const ideaTitle = currentIdea?.title || result.idea_id || 'Untitled Idea';
+        
         const report: ValidationReport = {
           validation_id: result.validation_id,
           idea_id: result.idea_id,
-          idea_title: currentIdea?.title || '',
+          idea_title: ideaTitle,
           overall_score: result.overall_score || 0,
           validation_date: result.created_at,
           ...result.individual_scores,
@@ -273,84 +263,16 @@ export function ValidationProvider({ children }: { children: ReactNode }) {
     }
   }, [currentIdea]);
 
+  // REMOVED: Polling is no longer needed - validation is now synchronous
   const pollValidationStatus = useCallback(async (validationId: string) => {
-    // Clear any existing polling
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-
-    let consecutiveErrors = 0;
-    const MAX_CONSECUTIVE_ERRORS = 3;
-
-    const poll = async () => {
-      try {
-        const status = await api.validations.getStatus(validationId);
-        
-        // Reset error counter on successful poll
-        consecutiveErrors = 0;
-        
-        // Update progress
-        setValidationProgress(status.progress);
-        
-        // Update current validation status
-        setCurrentValidation((prev) => {
-          if (prev && prev.validation_id === validationId) {
-            return {
-              ...prev,
-              status: status.status as any,
-            };
-          }
-          return prev;
-        });
-
-        // Check if validation is complete or failed
-        if (status.status === 'completed' || status.status === 'failed') {
-          // Stop polling
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-
-          // Fetch final result
-          await fetchValidationResult(validationId);
-          
-          // Set loading to false
-          setValidationLoading(false);
-        }
-      } catch (error: any) {
-        console.error('Error polling validation status:', error);
-        consecutiveErrors++;
-        
-        // If too many consecutive errors, stop polling and set error state
-        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-          console.error(`Stopping polling after ${MAX_CONSECUTIVE_ERRORS} consecutive errors`);
-          
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          
-          setValidationError('Failed to fetch validation status. Please refresh the page.');
-          setValidationLoading(false);
-        }
-        // Otherwise, continue polling (might be temporary network issue)
-      }
-    };
-
-    // Poll immediately
-    await poll();
-
-    // Then poll every 3 seconds
-    const interval = setInterval(poll, 3000);
-    pollingIntervalRef.current = interval;
-  }, [fetchValidationResult]);
+    // This method is kept for backward compatibility but does nothing
+    // Validation now completes synchronously, so no polling needed
+    console.warn('pollValidationStatus called but polling is deprecated - validation is now synchronous');
+  }, []);
 
   const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
+    // This method is kept for backward compatibility but does nothing
+    // No polling to stop since validation is synchronous
   }, []);
 
   // History operations
@@ -468,7 +390,6 @@ export function ValidationProvider({ children }: { children: ReactNode }) {
     createIdea,
     updateIdea,
     deleteIdea,
-    linkPainPoints,
     startValidation,
     fetchValidationResult,
     pollValidationStatus,

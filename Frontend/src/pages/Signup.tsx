@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { useToast } from '../hooks/use-toast';
+import { unifiedToast } from '../lib/toast-utils';
 import { z } from 'zod';
 import { Checkbox } from '../components/ui/checkbox';
 import { Lightbulb, Target, Users, ArrowRight } from 'lucide-react';
@@ -28,16 +28,14 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!termsAccepted) {
-      toast({
+      unifiedToast.error({
         title: 'Terms Required',
         description: 'Please accept the terms and conditions',
-        variant: 'destructive',
       });
       return;
     }
@@ -47,23 +45,19 @@ const Signup = () => {
     try {
       const validated = signupSchema.parse({ fullName, email, password, confirmPassword });
       await signup(validated.email, validated.password, validated.fullName);
-      toast({
-        title: 'Success',
+      unifiedToast.success({
         description: 'Your account has been created successfully.',
       });
       navigate('/');
     } catch (error) {
       if (error instanceof z.ZodError) {
-        toast({
+        unifiedToast.error({
           title: 'Validation Error',
           description: error.issues[0].message,
-          variant: 'destructive',
         });
       } else {
-        toast({
-          title: 'Error',
+        unifiedToast.error({
           description: error instanceof Error ? error.message : 'Signup failed',
-          variant: 'destructive',
         });
       }
     } finally {
@@ -145,7 +139,7 @@ const Signup = () => {
                   <Input
                     id="fullName"
                     type="text"
-                    placeholder="John Doe"
+                    placeholder="abcd"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
@@ -277,7 +271,7 @@ const Signup = () => {
                     <Input
                       id="fullName-mobile"
                       type="text"
-                      placeholder="John Doe"
+                      placeholder="abcd"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required

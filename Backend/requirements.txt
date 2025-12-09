@@ -18,6 +18,9 @@ tqdm
 pandas
 numpy
 torch
+transformers>=4.35.0
+accelerate>=0.25.0
+bitsandbytes>=0.41.0
 
 # Fix protobuf version for tensorflow 2.20.0
 protobuf>=5.28.0

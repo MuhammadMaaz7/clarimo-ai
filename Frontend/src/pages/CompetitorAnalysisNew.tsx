@@ -4,16 +4,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Loader2, Plus, X, TrendingUp, Target, History, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, X, TrendingUp, Target, ExternalLink } from 'lucide-react';
 import api from '../lib/api';
-import { toast } from 'sonner';
+import { unifiedToast } from '../lib/toast-utils';
 
 interface AnalysisResult {
   success: boolean;
@@ -24,6 +24,7 @@ interface AnalysisResult {
     description: string;
     features: string[];
     pricing?: string;
+    target_audience?: string;
   };
   top_competitors: Array<{
     name: string;
@@ -33,6 +34,9 @@ interface AnalysisResult {
     pricing?: string;
     target_audience?: string;
     source: string;
+    competitor_type?: 'direct' | 'indirect';
+    similarity_score?: number;
+    enriched?: boolean;
   }>;
   feature_matrix: {
     features: string[];
@@ -71,6 +75,13 @@ interface AnalysisResult {
     differentiation_strategy: string;
     recommendations: string[];
   };
+  market_insights?: {
+    total_competitors: number;
+    direct_competitors?: number;
+    indirect_competitors?: number;
+    market_saturation?: 'low' | 'medium' | 'high';
+    opportunity_score?: number;
+  };
   metadata: {
     total_competitors_analyzed: number;
     timestamp: string;
@@ -78,11 +89,10 @@ interface AnalysisResult {
 }
 
 export default function CompetitorAnalysisNew() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [resultsTab, setResultsTab] = useState('overview');
+  const [resultsTab, setResultsTab] = useState('competitors');
   
   // Form state
   const [productName, setProductName] = useState('');
@@ -105,7 +115,7 @@ export default function CompetitorAnalysisNew() {
       const result = await api.competitorAnalyses.getById(analysisId);
       setAnalysisResult(result);
     } catch (error: any) {
-      toast.error('Failed to load analysis');
+      unifiedToast.error({ description: 'Failed to load analysis' });
       console.error(error);
     } finally {
       setIsAnalyzing(false);
@@ -129,17 +139,17 @@ export default function CompetitorAnalysisNew() {
   const handleAnalyze = async () => {
     // Validation
     if (!productName.trim()) {
-      toast.error('Please enter a product name');
+      unifiedToast.error({ description: 'Please enter a product name' });
       return;
     }
     if (!description.trim()) {
-      toast.error('Please enter a product description');
+      unifiedToast.error({ description: 'Please enter a product description' });
       return;
     }
 
     const validFeatures = features.filter(f => f.trim());
     if (validFeatures.length === 0) {
-      toast.error('Please add at least one feature');
+      unifiedToast.error({ description: 'Please add at least one feature' });
       return;
     }
 
@@ -155,10 +165,10 @@ export default function CompetitorAnalysisNew() {
       });
 
       setAnalysisResult(result);
-      toast.success('Analysis complete!');
+      unifiedToast.success({ description: 'Analysis complete!' });
     } catch (error: any) {
       console.error('Analysis failed:', error);
-      toast.error(error.message || 'Analysis failed. Please try again.');
+      unifiedToast.error({ description: error.message || 'Analysis failed. Please try again.' });
     } finally {
       setIsAnalyzing(false);
     }
@@ -177,25 +187,66 @@ export default function CompetitorAnalysisNew() {
                 Analysis completed in {analysisResult.execution_time.toFixed(1)}s • {analysisResult.metadata.total_competitors_analyzed} competitors analyzed
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate('/competitor-analysis/history')}>
-                <History className="mr-2 h-4 w-4" />
-                View History
-              </Button>
+            {!searchParams.get('id') && (
               <Button onClick={() => setAnalysisResult(null)}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Analysis
               </Button>
-            </div>
+            )}
           </div>
 
           {/* Results Tabs */}
           <Tabs value={resultsTab} onValueChange={setResultsTab} className="w-full">
-            <TabsList className="grid w-full max-w-2xl grid-cols-3">
+            <TabsList className="grid w-full max-w-3xl grid-cols-4">
+              <TabsTrigger value="product">Product Info</TabsTrigger>
               <TabsTrigger value="competitors">Competitors ({analysisResult.top_competitors.length})</TabsTrigger>
               <TabsTrigger value="comparison">Feature Comparison</TabsTrigger>
               <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
             </TabsList>
+
+            {/* Product Info Tab */}
+            <TabsContent value="product" className="mt-6">
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle>Your Product Information</CardTitle>
+                  <CardDescription>The inputs you provided for this analysis</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Product Name</h3>
+                    <p className="text-lg font-semibold">{analysisResult.product.name}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                    <p className="text-foreground whitespace-pre-wrap">{analysisResult.product.description}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Features</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {analysisResult.product.features.map((feature: string, idx: number) => (
+                        <li key={idx} className="text-foreground">{feature}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {analysisResult.product.pricing && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Pricing</h3>
+                      <p className="text-foreground">{analysisResult.product.pricing}</p>
+                    </div>
+                  )}
+                  
+                  {analysisResult.product.target_audience && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Target Audience</h3>
+                      <p className="text-foreground">{analysisResult.product.target_audience}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* Competitors Tab */}
             <TabsContent value="competitors" className="mt-6 space-y-4">
@@ -552,10 +603,6 @@ export default function CompetitorAnalysisNew() {
               Discover competitors and identify market opportunities
             </p>
           </div>
-          <Button variant="outline" onClick={() => navigate('/competitor-analysis/history')}>
-            <History className="mr-2 h-4 w-4" />
-            View History
-          </Button>
         </div>
 
         {/* Form */}

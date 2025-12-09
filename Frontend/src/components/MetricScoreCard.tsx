@@ -42,6 +42,9 @@ export default function MetricScoreCard({
   const metricInfo = getMetricInfo(metricName);
   const scoreColor = getScoreColor(score.value);
   const scoreLabel = getScoreLabel(score.value);
+  
+  // Check if this metric has an error
+  const hasError = score.error === true || (score.metadata?.error === true);
 
   // Format evidence value for display
   const formatEvidenceValue = (value: any): string => {
@@ -139,6 +142,59 @@ export default function MetricScoreCard({
               View Details
               <ChevronRight className="ml-1 h-3 w-3" />
             </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Error state - show friendly error message
+  if (hasError) {
+    return (
+      <Card className={`glass border-destructive/30 bg-destructive/5 ${className}`}>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">{metricInfo.icon}</div>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  {metricInfo.displayName}
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                </CardTitle>
+                <CardDescription>{metricInfo.description}</CardDescription>
+              </div>
+            </div>
+            
+            <Badge variant="destructive">
+              Unavailable
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-sm text-muted-foreground mb-3">
+              This metric could not be evaluated due to a temporary issue with our analysis service.
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.reload()}
+                className="text-xs"
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+          
+          {score.error_message && (
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer hover:text-foreground">Technical details</summary>
+              <p className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs">
+                {score.error_message}
+              </p>
+            </details>
           )}
         </CardContent>
       </Card>

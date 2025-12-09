@@ -1,0 +1,167 @@
+INFO:     Started server process [8272]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:64840 - "OPTIONS /api/ideas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "POST /api/ideas/ HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64840 - "OPTIONS /api/ideas HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "POST /api/ideas HTTP/1.1" 201 Created
+INFO:     127.0.0.1:64840 - "OPTIONS /api/ideas/8169ea7d-e88e-474c-b50c-c04221f81fd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62501 - "OPTIONS /api/ideas/8169ea7d-e88e-474c-b50c-c04221f81fd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/ideas/8169ea7d-e88e-474c-b50c-c04221f81fd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62501 - "GET /api/ideas/8169ea7d-e88e-474c-b50c-c04221f81fd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62501 - "OPTIONS /api/validations/validate HTTP/1.1" 200 OK
+INFO:clarimo_ai:Created validation 5bbc4b79-5474-4caf-8d02-a2b2acb2b214 for idea 8169ea7d-e88e-474c-b50c-c04221f81fd8
+INFO:     127.0.0.1:62501 - "POST /api/validations/validate HTTP/1.1" 202 Accepted
+INFO:clarimo_ai:Starting background validation 5bbc4b79-5474-4caf-8d02-a2b2acb2b214
+INFO:clarimo_ai:Starting validation for idea 8169ea7d-e88e-474c-b50c-c04221f81fd8
+INFO:app.services.shared.unified_llm_service:Trying OPENROUTER API...
+INFO:app.services.shared.unified_llm_service:Trying OPENROUTER API...
+INFO:     127.0.0.1:64840 - "OPTIONS /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62501 - "OPTIONS /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "OPTIONS /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62501 - "GET /api/ideas/8169ea7d-e88e-474c-b50c-c04221f81fd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62501 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/ideas/8169ea7d-e88e-474c-b50c-c04221f81fd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:clarimo_ai:Found 1 products on HackerNews for query: legal contract summarizer teams platform
+INFO:clarimo_ai:Found 1 products on HackerNews for query: legal contract summarizer teams platform
+INFO:clarimo_ai:Found 0 repositories on GitHub for query: legal contract summarizer teams platform
+INFO:clarimo_ai:Found 0 repositories on GitHub for query: legal contract summarizer teams platform
+INFO:clarimo_ai:Found 10 apps on App Store for query: legal contract summarizer teams platform
+INFO:clarimo_ai:Found 9 apps on Play Store for query: legal contract summarizer teams platform
+INFO:app.services.shared.unified_llm_service:Trying OPENROUTER API...
+INFO:clarimo_ai:Found 10 apps on App Store for query: legal contract summarizer teams platform
+INFO:clarimo_ai:Found 9 apps on Play Store for query: legal contract summarizer teams platform
+INFO:app.services.shared.unified_llm_service:Trying OPENROUTER API...
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 1 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 2 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 3 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 2 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 1 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 4 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 1 failed: HTTP 429
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OPENROUTER failed, trying next provider...
+INFO:app.services.shared.unified_llm_service:Trying GROQ API...
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 1 failed: HTTP 429
+INFO:app.services.shared.unified_llm_service:✓ GROQ succeeded
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OPENROUTER failed, trying next provider...
+INFO:app.services.shared.unified_llm_service:Trying GROQ API...
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:app.services.shared.unified_llm_service:✓ GROQ succeeded
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 2 failed: HTTP 429
+WARNING:app.services.shared.unified_llm_service:OPENROUTER failed, trying next provider...
+INFO:app.services.shared.unified_llm_service:Trying GROQ API...
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+WARNING:app.services.shared.unified_llm_service:OpenRouter key 5 attempt 2 failed: HTTP 429
+INFO:app.services.shared.unified_llm_service:✓ GROQ succeeded
+WARNING:app.services.shared.unified_llm_service:OPENROUTER failed, trying next provider...
+INFO:app.services.shared.unified_llm_service:Trying GROQ API...
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:app.services.shared.unified_llm_service:✓ GROQ succeeded
+INFO:clarimo_ai:Validation completed for idea 8169ea7d-e88e-474c-b50c-c04221f81fd8
+INFO:clarimo_ai:Updated validation 5bbc4b79-5474-4caf-8d02-a2b2acb2b214 to COMPLETED and updated idea 8169ea7d-e88e-474c-b50c-c04221f81fd8
+INFO:clarimo_ai:Completed validation 5bbc4b79-5474-4caf-8d02-a2b2acb2b214 successfully
+INFO:     127.0.0.1:52812 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "OPTIONS /api/validations/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "GET /api/validations/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64840 - "GET /api/validations/status/5bbc4b79-5474-4caf-8d02-a2b2acb2b214 HTTP/1.1" 200 OK
+
+
+what is this issue with idea validaation, why does it keeps polling? what is need of it? and even after the validation is complete it keeps on polling
+

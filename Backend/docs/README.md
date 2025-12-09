@@ -8,11 +8,11 @@ Both Module 2 (Idea Validation) and Module 3 (Competitor Analysis) use a unified
 
 ```python
 # Module 2 (Idea Validation)
-from app.services.shared.unified_llm_service import get_llm_service_for_module2
+from app.services.shared.llm_service import get_llm_service_for_module2
 llm_service = get_llm_service_for_module2()
 
 # Module 3 (Competitor Analysis)
-from app.services.shared.unified_llm_service import get_llm_service_for_module3
+from app.services.shared.llm_service import get_llm_service_for_module3
 llm_service = get_llm_service_for_module3()
 ```
 
@@ -106,6 +106,8 @@ unified_llm_service.py (Shared)
 ## Testing
 
 ```python
+from app.services.shared.llm_service import get_llm_service_for_module2
+
 llm_service = get_llm_service_for_module2()
 status = llm_service.get_provider_status()
 print(status)

@@ -11,16 +11,16 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Loader2 } from 'lucide-react';
+
 import { useValidation } from '../contexts/ValidationContext';
 import { ValidationProgress } from '../components/ValidationProgress';
 import ValidationReportView from '../components/ValidationReportView';
-import { useToast } from '../hooks/use-toast';
+import { UnifiedLoadingSpinner } from '../components/shared';
+import { unifiedToast } from '../lib/toast-utils';
 
 export default function IdeaValidation() {
   const { ideaId } = useParams<{ ideaId: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const {
     currentIdea,
     currentValidation,
@@ -45,10 +45,11 @@ export default function IdeaValidation() {
 
   // Fetch validation result if idea has a latest validation
   useEffect(() => {
-    if (currentIdea?.latest_validation?.validation_id && !currentValidation) {
+    if (currentIdea?.latest_validation?.validation_id) {
+      console.log('Fetching validation result:', currentIdea.latest_validation.validation_id);
       fetchValidationResult(currentIdea.latest_validation.validation_id);
     }
-  }, [currentIdea?.id, currentValidation, fetchValidationResult]);
+  }, [currentIdea?.latest_validation?.validation_id, fetchValidationResult]);
 
   useEffect(() => {
     // If there's no validation in progress, check if we should show results
@@ -62,20 +63,16 @@ export default function IdeaValidation() {
   }, [currentValidation]);
 
   const handleValidationComplete = () => {
-    toast({
-      title: 'Validation Complete',
+    unifiedToast.success({
       description: 'Your validation report is ready to view.',
     });
     setShowProgress(false);
-    // Optionally navigate to report view
-    // navigate(`/ideas/${ideaId}/report`);
   };
 
   const handleValidationError = (error: string) => {
-    toast({
+    unifiedToast.error({
       title: 'Validation Failed',
       description: error,
-      variant: 'destructive',
     });
     setShowProgress(false);
   };
@@ -84,24 +81,17 @@ export default function IdeaValidation() {
     if (!ideaId) return;
     
     try {
-      // Clear current validation state
       clearCurrentValidation();
-      
-      // Show progress again
       setShowProgress(true);
-      
-      // Start new validation
       await startValidation(ideaId);
       
-      toast({
-        title: 'Validation Restarted',
+      unifiedToast.success({
         description: 'Starting a new validation for your idea.',
       });
     } catch (error: any) {
-      toast({
+      unifiedToast.error({
         title: 'Failed to Restart Validation',
         description: error.message || 'Please try again later.',
-        variant: 'destructive',
       });
     }
   };
@@ -113,7 +103,6 @@ export default function IdeaValidation() {
     try {
       const data = await exportToJson(currentValidation.validation_id);
       
-      // Create download
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -124,15 +113,12 @@ export default function IdeaValidation() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      toast({
-        title: 'Export Successful',
+      unifiedToast.success({
         description: 'Validation report exported as JSON.',
       });
     } catch (error: any) {
-      toast({
-        title: 'Export Failed',
+      unifiedToast.error({
         description: error.message || 'Failed to export report.',
-        variant: 'destructive',
       });
     } finally {
       setIsExporting(false);
@@ -146,7 +132,6 @@ export default function IdeaValidation() {
     try {
       const blob = await exportToPdf(currentValidation.validation_id);
       
-      // Create download
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -156,15 +141,12 @@ export default function IdeaValidation() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      toast({
-        title: 'Export Successful',
+      unifiedToast.success({
         description: 'Validation report exported as PDF.',
       });
     } catch (error: any) {
-      toast({
-        title: 'Export Failed',
+      unifiedToast.error({
         description: error.message || 'Failed to export report.',
-        variant: 'destructive',
       });
     } finally {
       setIsExporting(false);
@@ -172,7 +154,7 @@ export default function IdeaValidation() {
   };
 
   const handleShare = () => {
-    toast({
+    unifiedToast.info({
       title: 'Coming Soon',
       description: 'Share functionality will be available in the next update.',
     });
@@ -183,10 +165,7 @@ export default function IdeaValidation() {
       <div className="container mx-auto px-4 py-8">
         <Card className="glass border-border/50">
           <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary mb-4" />
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
+            <UnifiedLoadingSpinner text="Loading validation..." />
           </CardContent>
         </Card>
       </div>

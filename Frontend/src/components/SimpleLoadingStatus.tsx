@@ -1,5 +1,13 @@
+/**
+ * Simple Loading Status Component
+ * Shows loading state with rotating messages or validation errors
+ * Uses unified design system
+ */
+
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
 
 interface SimpleLoadingStatusProps {
   isValidationError?: boolean;
@@ -23,65 +31,67 @@ const SimpleLoadingStatus = ({ isValidationError, validationMessage, onRetry }: 
     
     const interval = setInterval(() => {
       setCurrentMessage((prev) => (prev + 1) % loadingMessages.length);
-    }, 3000); // Change message every 3 seconds
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [isValidationError]);
 
   if (isValidationError) {
     return (
-      <div className="glass rounded-2xl border-red-500/30 p-8 text-center bg-red-500/10 backdrop-blur-xl">
-        <div className="mb-6 flex justify-center">
-          <div className="rounded-2xl bg-red-500 p-4 shadow-lg">
-            <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+      <Card className="glass border-destructive/50">
+        <CardContent className="pt-12 pb-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="rounded-full bg-destructive/10 p-6">
+              <AlertTriangle className="h-12 w-12 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-destructive">
+                Input Validation Failed
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                {validationMessage || "Please provide a valid business or technical problem description."}
+              </p>
+            </div>
+            {onRetry && (
+              <Button onClick={onRetry} variant="outline" className="mt-4">
+                Try Again
+              </Button>
+            )}
           </div>
-        </div>
-        
-        <h2 className="text-2xl font-bold text-red-400 mb-4">
-          Input Validation Failed
-        </h2>
-        
-        <p className="text-red-200 mb-6 max-w-2xl mx-auto">
-          {validationMessage || "Please provide a valid business or technical problem description."}
-        </p>
-        
-        <button 
-          onClick={onRetry}
-          className="px-6 py-3 bg-gradient-to-r from-primary to-accent text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
-        >
-          Try Again
-        </button>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="glass rounded-2xl border-border/50 p-8 text-center bg-white/5 backdrop-blur-xl">
-      <div className="mb-6 flex justify-center">
-        <div className="rounded-2xl bg-gradient-to-br from-accent to-primary p-4 shadow-lg">
-          <Loader2 className="h-8 w-8 text-white animate-spin" />
+    <Card className="glass border-border/50">
+      <CardContent className="pt-12 pb-12">
+        <div className="flex flex-col items-center justify-center text-center space-y-6">
+          <div className="rounded-full bg-primary/10 p-6 glow-sm">
+            <Loader2 className="h-12 w-12 text-primary animate-spin" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold transition-all duration-500">
+              {loadingMessages[currentMessage]}
+            </h3>
+            <p className="text-muted-foreground">
+              Please wait while we analyze your request and gather insights.
+            </p>
+          </div>
+          
+          <div className="w-full max-w-md">
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div className="h-full gradient-primary rounded-full animate-pulse" 
+                   style={{ width: '60%' }} />
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This may take a few minutes...
+            </p>
+          </div>
         </div>
-      </div>
-      
-      <h2 className="text-2xl font-bold text-white mb-4 transition-all duration-500">
-        {loadingMessages[currentMessage]}
-      </h2>
-      
-      <p className="text-muted-foreground mb-6">
-        Please wait while we analyze your request and gather insights.
-      </p>
-      
-      <div className="w-full bg-border/30 rounded-full h-2 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full animate-pulse" 
-             style={{ width: '60%' }} />
-      </div>
-      
-      <div className="mt-4 text-sm text-muted-foreground">
-        This may take a few minutes...
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

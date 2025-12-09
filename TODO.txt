@@ -1,83 +1,10 @@
-# TODO - Clarimo AI
-
-## Module 1 - Pain Point Discovery
-- Embeddings should be used and saved in global cache
-- Test with 2 similar inputs to verify cache is working
-- Remove user1,2,3,4 test data
-- Understand global cache vs optimized global cache
-- Understand exact, normalized, semantic matching
-- Change priority to semantic hits for testing
-- Text color improvements in UI
-- Display only problems (remove upvotes display)
-- UI improvements needed
-- Save pain points in database
-- User should see their inputs and corresponding pain points in profile/UI
-- Input validation with prompt in keyword extraction
-- UI improvements: loading spinner, better design
-- Use domain in filtering
-- Output should not be removed until user removes in frontend
-- Proper logging: total time, separate time tracking
-- Remove session management for now
-- Remove "TRUNCATED" display in frontend posts
-- Processing status should show "completed"
-- Any limit on reference inputs?
-
-## Module 2 - Idea Validation
-- Only 1 paragraph input - system should extract all required info automatically
-  (Currently taking multiple inputs, should be extracted from single description)
-
-## Recent Fixes (2025-11-30)
-✅ Fixed validation bugs - inconsistent Score class definitions
-✅ Fixed LLM prompt ambiguity in risk assessor
-✅ Fixed continuous polling after validation completes
-✅ Fixed ideas not showing validation status in UI
-
-Recommendations should not be hardcoded
-Something other than only LLM calls
-
-## Module 3 - Competitor Analysis (2025-12-07)
-
-✅ DONE - Simplified to 3 clear tabs:
-- TAB 1: COMPETITORS - Clean list with real data, pricing, features
-- TAB 2: FEATURE COMPARISON - Only shows if real data exists, otherwise shows "Limited data" message
-- TAB 3: MARKET ANALYSIS - Honest assessment with challenges, opportunities, recommendations
-
-✅ DONE - Removed bias and fake metrics:
-- Removed fake "unique strengths" that just repeated user input
-- Removed misleading metric cards (opportunities count, strengths count)
-- LLM prompts now explicitly demand honest, factual analysis
-- Temperature lowered to 0.1 for more factual responses
-- Will tell user if market is saturated or they have no real advantages
-- Feature comparison only shows when we have actual scraped data
-
-✅ DONE - Fixed search relevance (finding wrong competitors):
-- Keyword extractor now preserves meaningful PHRASES instead of single words
-  Example: "CodeSnippetVault" -> "code snippet manager" (not just "code", "snippet")
-- Search queries now combine keywords to form product categories
-  Example: "code snippet software" instead of "code software"
-- Filters out generic terms (app, software, tool, platform) from single-word searches
-- Added SEMANTIC FILTERING using TF-IDF + cosine similarity
-  * Compares competitor descriptions to user's product description
-  * Automatically filters out irrelevant results (e.g., VS Code when searching for snippet managers)
-  * No hardcoded rules - uses ML to determine relevance
-  * Minimum similarity threshold: 0.15 (adjustable)
-  * Ranks by: relevance_score × semantic_similarity
+=> Competitor Weaknesses in market analysis 
+=> Dashboard
+=> Unified the frontend, theme, color scheme, all components, like loading spinner is differnt in loading previous ideas, and same of previous pain points, and comppetitor analysis, the pop ups, the toast messages, should be unified, the website shouldnt like rainbow, the color scheme of the website which is that should be used, with different effect, shades, glass effects and modern look, the idea validation effects, colors looks good, mmake the commplete system unified in frontend. and reuse the components, do less duplication, if one component is already there and could be used then use that instead of making new
+=> IDEA VALIDATION MORE METRICS
 
 
 
 
-
-
-
-
-ALL THE APIs fallback should be a reliable huggingface local model
-Data must be saved in the files
-Show complete description of competitors on frontend
-save competitors in files at every step, i want to see semantically filtered ones too
-
-
-dont show similarty, full desc
-Competitor Weaknesses in market analysis 
-
-
-DONT SHOW LLM FAILURES on frontend, if API failing then Local Fallback on any reliable huggingface model, or show NETWORK OR SOMEOTHER ISSUE
+Where the are the competitor analysis user inputs being saved? and in the previous competitor analysis, i cant see user inputs with the analysis, aas i can see in the idea validaation, and pain point discovery, show the inputs of that analysis too, interactively, and user inputs must be saved in the db
+and at every step of backend in competitor anlysis, all the data in between all the steps MUST be saved in the data directory in side the backend

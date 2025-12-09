@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { History, Plus, TrendingUp, Calendar } from 'lucide-react';
 import api from '../lib/api';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { UnifiedLoadingSpinner, EmptyState } from '../components/shared';
 
 export default function CompetitorAnalysisHistory() {
   const navigate = useNavigate();
@@ -48,10 +48,7 @@ export default function CompetitorAnalysisHistory() {
       <div className="container mx-auto px-4 py-8">
         <Card className="glass border-border/50">
           <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <LoadingSpinner />
-              <p className="text-muted-foreground mt-4">Loading analyses...</p>
-            </div>
+            <UnifiedLoadingSpinner text="Loading analyses..." />
           </CardContent>
         </Card>
       </div>
@@ -69,10 +66,6 @@ export default function CompetitorAnalysisHistory() {
               View and manage your previous competitor analyses
             </p>
           </div>
-          <Button onClick={() => navigate('/competitor-analysis/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Analysis
-          </Button>
         </div>
 
         {/* Analyses List */}

@@ -11,13 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeft, Edit, Trash2, Play, Loader2, CheckCircle } from 'lucide-react';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { useToast } from '../hooks/use-toast';
+import { UnifiedLoadingSpinner } from '../components/shared';
+import { unifiedToast } from '../lib/toast-utils';
 
 export default function CompetitorAnalysisDetail() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const {
     currentProduct,
     fetchProductById,
@@ -47,16 +46,13 @@ export default function CompetitorAnalysisDetail() {
     setIsDeleting(true);
     try {
       await deleteProduct(productId);
-      toast({
-        title: 'Product Deleted',
+      unifiedToast.success({
         description: 'Product has been successfully deleted.',
       });
       navigate('/competitor-analysis');
     } catch (error: any) {
-      toast({
-        title: 'Delete Failed',
+      unifiedToast.error({
         description: error.message || 'Failed to delete product',
-        variant: 'destructive',
       });
     } finally {
       setIsDeleting(false);
@@ -68,17 +64,13 @@ export default function CompetitorAnalysisDetail() {
 
     try {
       await startAnalysis(productId);
-      toast({
-        title: 'Analysis Started',
+      unifiedToast.success({
         description: 'Competitor analysis has been initiated. This may take a few minutes.',
       });
-      // Navigate to analysis view
       navigate(`/competitor-analysis/${productId}/analysis`);
     } catch (error: any) {
-      toast({
-        title: 'Analysis Failed',
+      unifiedToast.error({
         description: error.message || 'Failed to start analysis',
-        variant: 'destructive',
       });
     }
   };
@@ -88,10 +80,7 @@ export default function CompetitorAnalysisDetail() {
       <div className="container mx-auto px-4 py-8">
         <Card className="glass border-border/50">
           <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <LoadingSpinner />
-              <p className="text-muted-foreground mt-4">Loading product...</p>
-            </div>
+            <UnifiedLoadingSpinner text="Loading product..." />
           </CardContent>
         </Card>
       </div>

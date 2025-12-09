@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { useToast } from '../hooks/use-toast';
+import { unifiedToast } from '../lib/toast-utils';
 import { z } from 'zod';
 import { Sparkles, TrendingUp, ArrowRight } from 'lucide-react';
 
@@ -19,7 +19,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,23 +27,19 @@ const Login = () => {
     try {
       const validated = loginSchema.parse({ email, password });
       await login(validated.email, validated.password);
-      toast({
-        title: 'Success',
+      unifiedToast.success({
         description: 'You have successfully logged in.',
       });
       navigate('/');
     } catch (error) {
       if (error instanceof z.ZodError) {
-        toast({
+        unifiedToast.error({
           title: 'Validation Error',
           description: error.issues[0].message,
-          variant: 'destructive',
         });
       } else {
-        toast({
-          title: 'Error',
+        unifiedToast.error({
           description: error instanceof Error ? error.message : 'Login failed',
-          variant: 'destructive',
         });
       }
     } finally {

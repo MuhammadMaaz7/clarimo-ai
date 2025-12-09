@@ -11,7 +11,7 @@ import { useCompetitor } from '../contexts/CompetitorContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Plus, Search, TrendingUp, Loader2 } from 'lucide-react';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { UnifiedLoadingSpinner, EmptyState } from '../components/shared';
 
 export default function CompetitorAnalysis() {
   const navigate = useNavigate();
@@ -26,10 +26,7 @@ export default function CompetitorAnalysis() {
       <div className="container mx-auto px-4 py-8">
         <Card className="glass border-border/50">
           <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <LoadingSpinner />
-              <p className="text-muted-foreground mt-4">Loading products...</p>
-            </div>
+            <UnifiedLoadingSpinner text="Loading products..." />
           </CardContent>
         </Card>
       </div>

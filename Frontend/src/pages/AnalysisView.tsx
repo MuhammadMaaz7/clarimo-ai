@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, AlertCircle, X } from 'lucide-react';
 import PainPointsDisplay from '../components/PainPointsDisplay';
+import { UnifiedLoadingSpinner, ErrorState } from '../components/shared';
 import { useAnalysis } from '../contexts/AnalysisContext';
 import { api } from '../lib/api';
 
@@ -50,12 +51,7 @@ const AnalysisView = () => {
     if (loading) {
         return (
             <div className="responsive-spacing-md pb-8">
-                <div className="flex items-center justify-center p-12">
-                    <div className="flex flex-col items-center space-y-4">
-                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-                        <span className="text-lg font-medium text-white">Loading analysis...</span>
-                    </div>
-                </div>
+                <UnifiedLoadingSpinner size="lg" text="Loading analysis..." />
             </div>
         );
     }

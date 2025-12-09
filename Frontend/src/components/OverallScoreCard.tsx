@@ -152,13 +152,13 @@ export default function OverallScoreCard({ score, previousScore }: OverallScoreC
             </div>
 
             {/* Additional Context */}
-            <div className="mt-6 p-4 bg-card/50 rounded-lg border border-border/30">
+            {/* <div className="mt-6 p-4 bg-card/50 rounded-lg border border-border/30">
               <p className="text-sm text-muted-foreground">
                 <strong className="text-foreground">Note:</strong> This score represents the average 
                 of all validation metrics. Review individual metric scores below for detailed insights 
                 into specific areas of strength and improvement.
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </CardContent>

@@ -18,7 +18,6 @@ import {
   ArrowLeft,
   Edit,
   Trash2,
-  Link as LinkIcon,
   Calendar,
   Target,
   Briefcase,
@@ -171,7 +170,6 @@ export default function IdeaDetailView() {
             targetMarket: currentIdea.target_market,
             businessModel: currentIdea.business_model,
             teamCapabilities: currentIdea.team_capabilities,
-            linkedPainPointIds: currentIdea.linked_pain_points,
           }}
           isLoading={ideasLoading}
           isEdit={true}
@@ -303,43 +301,6 @@ export default function IdeaDetailView() {
             </div>
           )}
 
-          {/* Linked Pain Points */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-              <LinkIcon className="h-5 w-5 text-primary" />
-              Linked Pain Points
-            </h3>
-            {currentIdea.linked_pain_points.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-muted-foreground">
-                  {currentIdea.linked_pain_points.length} pain point(s) linked
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/ideas/${ideaId}/pain-points`)}
-                  className="glass border-border/50"
-                >
-                  <LinkIcon className="mr-2 h-4 w-4" />
-                  Manage Pain Points
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-muted-foreground">No pain points linked yet</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/ideas/${ideaId}/pain-points`)}
-                  className="glass border-border/50"
-                >
-                  <LinkIcon className="mr-2 h-4 w-4" />
-                  Link Pain Points
-                </Button>
-              </div>
-            )}
-          </div>
-
           {/* Metadata */}
           <div className="pt-4 border-t border-border/50">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -404,7 +365,6 @@ export default function IdeaDetailView() {
                   onValidationStarted={handleValidationStarted}
                   variant="default"
                   size="lg"
-                  showConfigOptions={true}
                 />
               </div>
             </div>
@@ -416,7 +376,6 @@ export default function IdeaDetailView() {
                 onValidationStarted={handleValidationStarted}
                 variant="default"
                 size="lg"
-                showConfigOptions={true}
               />
             </div>
           )}

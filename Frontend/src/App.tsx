@@ -26,7 +26,6 @@ const DiscoveredProblems = lazy(() => import("./pages/DiscoveredProblems"));
 const IdeaList = lazy(() => import("./pages/IdeaList"));
 const IdeaNew = lazy(() => import("./pages/IdeaNew"));
 const IdeaDetail = lazy(() => import("./pages/IdeaDetail"));
-const IdeaPainPoints = lazy(() => import("./pages/IdeaPainPoints"));
 const IdeaValidation = lazy(() => import("./pages/IdeaValidation"));
 const IdeaValidationHistory = lazy(() => import("./pages/IdeaValidationHistory"));
 const IdeaVersionComparison = lazy(() => import("./pages/IdeaVersionComparison"));
@@ -117,11 +116,6 @@ const AppContent = () => {
                       <Route path="/ideas/:ideaId" element={
                         <ProtectedRoute>
                           <IdeaDetail />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/:ideaId/pain-points" element={
-                        <ProtectedRoute>
-                          <IdeaPainPoints />
                         </ProtectedRoute>
                       } />
                       <Route path="/ideas/:ideaId/validate" element={
