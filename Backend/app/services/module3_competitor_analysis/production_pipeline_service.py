@@ -7,6 +7,7 @@ from typing import Dict, Any, List, Optional
 import asyncio
 from datetime import datetime
 import os
+import re
 
 from .llm_keyword_service import LLMKeywordService
 from .google_search_service import get_google_search_service
@@ -32,6 +33,39 @@ class ProductionPipelineService:
     - Optimized performance
     - User-friendly error messages
     """
+    
+    @staticmethod
+    def _truncate_at_sentence(text: str, max_length: int = 300) -> str:
+        """
+        Truncate text at sentence boundary, not mid-sentence
+        Ensures complete sentences without trailing ...
+        """
+        if not text or len(text) <= max_length:
+            return text
+        
+        # Find the last sentence ending before max_length
+        truncated = text[:max_length]
+        
+        # Look for sentence endings: . ! ?
+        sentence_endings = ['.', '!', '?']
+        last_ending = -1
+        
+        for ending in sentence_endings:
+            pos = truncated.rfind(ending)
+            if pos > last_ending:
+                last_ending = pos
+        
+        # If we found a sentence ending, cut there
+        if last_ending > 50:  # At least 50 chars
+            return text[:last_ending + 1].strip()
+        
+        # Otherwise, cut at last space to avoid mid-word
+        last_space = truncated.rfind(' ')
+        if last_space > 50:
+            return text[:last_space].strip()
+        
+        # Fallback: just return truncated
+        return truncated.strip()
     
     @staticmethod
     async def analyze_product(
@@ -114,7 +148,7 @@ class ProductionPipelineService:
             logger.info(f"✓ Analysis structured for dashboard")
             
             # Build Final Response
-            response = ProductionPipelineService._build_clean_response(
+            response = await ProductionPipelineService._build_clean_response(
                 product_info, keywords, enriched_top_5, classified_competitors, 
                 final_analysis, analysis_id, time.time() - start_time
             )
@@ -343,7 +377,7 @@ class ProductionPipelineService:
             for p in result.get('products', []):
                 competitors.append({
                     "name": p['name'],
-                    "description": p.get('description', '')[:200],
+                    "description": ProductionPipelineService._truncate_at_sentence(p.get('description', ''), 300),
                     "url": p['url'],
                     "source": "product_hunt",
                     "votes": p.get('votes'),
@@ -389,7 +423,7 @@ class ProductionPipelineService:
             for repo in result.get('repositories', []):
                 competitors.append({
                     "name": repo['name'],
-                    "description": repo.get('description', '')[:200],
+                    "description": ProductionPipelineService._truncate_at_sentence(repo.get('description', ''), 300),
                     "url": repo['url'],
                     "source": "github",
                     "stars": repo.get('stars')
@@ -421,7 +455,7 @@ class ProductionPipelineService:
                 for app in app_store_result.get('apps', []):
                     competitors.append({
                         "name": app['name'],
-                        "description": app.get('description', '')[:200],
+                        "description": ProductionPipelineService._truncate_at_sentence(app.get('description', ''), 300),
                         "url": app.get('url'),
                         "source": "app_store",
                         "rating": app.get('rating')
@@ -431,7 +465,7 @@ class ProductionPipelineService:
                 for app in play_store_result.get('apps', []):
                     competitors.append({
                         "name": app['name'],
-                        "description": app.get('description', '')[:200],
+                        "description": ProductionPipelineService._truncate_at_sentence(app.get('description', ''), 300),
                         "url": app.get('url'),
                         "source": "play_store",
                         "rating": app.get('rating')
@@ -449,15 +483,16 @@ class ProductionPipelineService:
         classified_competitors: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Step 5: LLM Verification - Select Top 5 Competitors
-        LLM reviews all classified competitors and selects the most relevant 5
+        Step 5: LLM Verification - Select Top 10 Candidates with automatic fallback
+        LLM reviews all classified competitors and selects the most relevant 10
+        (We select 10 to have backups in case web scraping fails for some)
         """
-        # If we have 5 or fewer, return all
-        if len(classified_competitors) <= 5:
+        # If we have 10 or fewer, return all
+        if len(classified_competitors) <= 10:
             return classified_competitors
         
         # Prepare prompt for LLM
-        prompt = f"""You are a competitive intelligence analyst. Review the following competitors and select the TOP 5 most relevant competitors for the user's product.
+        prompt = f"""You are a competitive intelligence analyst. Review the following competitors and select the TOP 10 most relevant competitors for the user's product.
 
 USER'S PRODUCT:
 Name: {product_info['name']}
@@ -467,7 +502,7 @@ Features: {', '.join(product_info.get('features', []))}
 COMPETITORS TO REVIEW ({len(classified_competitors)} total):
 """
         
-        for i, comp in enumerate(classified_competitors[:20], 1):  # Limit to top 20 for token efficiency
+        for i, comp in enumerate(classified_competitors[:25], 1):  # Limit to top 25 for token efficiency
             comp_type = comp.get('competitor_type', 'unknown')
             similarity = comp.get('similarity_score', 0)
             prompt += f"\n{i}. {comp['name']} ({comp_type.upper()}, {similarity*100:.1f}% similar)"
@@ -477,133 +512,254 @@ COMPETITORS TO REVIEW ({len(classified_competitors)} total):
         prompt += """
 
 INSTRUCTIONS:
-1. Select the TOP 5 most relevant competitors
+1. Select the TOP 10 most relevant competitors (we need backups in case some fail)
 2. Prioritize DIRECT competitors over indirect
 3. Consider similarity scores, descriptions, and sources
 4. Return ONLY a JSON array of competitor names
 
 Example response:
-["Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4", "Competitor 5"]
+["Competitor 1", "Competitor 2", ..., "Competitor 10"]
 
 Return ONLY the JSON array, nothing else:"""
         
         try:
-            # Try to get LLM selection
-            from .llm_keyword_service import LLMKeywordService
+            from app.services.shared.unified_llm_service import get_llm_service_for_module3
             import json
-            import re
             
-            # Use the same LLM service
-            groq_keys = LLMKeywordService._get_groq_keys()
-            
-            if groq_keys:
-                import requests
+            # Define fallback handler
+            def fallback_handler():
+                # Fallback: Select top 5 by quality score
+                logger.info("Using fallback selection (quality score)")
+                scored = []
+                for comp in classified_competitors:
+                    score = 0
+                    if comp.get('competitor_type') == 'direct':
+                        score += 10
+                    score += comp.get('similarity_score', 0) * 10
+                    if comp.get('description'): score += 2
+                    if comp.get('features'): score += 3
+                    if comp.get('url'): score += 1
+                    scored.append({**comp, 'selection_score': score})
                 
-                for api_key in groq_keys:
-                    try:
-                        response = requests.post(
-                            "https://api.groq.com/openai/v1/chat/completions",
-                            headers={
-                                "Authorization": f"Bearer {api_key}",
-                                "Content-Type": "application/json"
-                            },
-                            json={
-                                "model": "llama-3.3-70b-versatile",
-                                "messages": [
-                                    {"role": "system", "content": "You are a competitive intelligence analyst. Return only valid JSON."},
-                                    {"role": "user", "content": prompt}
-                                ],
-                                "temperature": 0.1,
-                                "max_tokens": 500
-                            },
-                            timeout=15
-                        )
-                        
-                        if response.status_code == 200:
-                            llm_response = response.json()["choices"][0]["message"]["content"].strip()
-                            
-                            # Extract JSON array
-                            json_match = re.search(r'\[.*?\]', llm_response, re.DOTALL)
-                            if json_match:
-                                selected_names = json.loads(json_match.group())
-                                
-                                # Find competitors by name
-                                top_5 = []
-                                for name in selected_names[:5]:
-                                    for comp in classified_competitors:
-                                        if comp['name'].lower() == name.lower():
-                                            top_5.append(comp)
-                                            break
-                                
-                                if len(top_5) >= 3:  # At least 3 valid selections
-                                    logger.info(f"LLM selected: {[c['name'] for c in top_5]}")
-                                    return top_5
-                        
-                    except Exception as e:
-                        logger.warning(f"LLM selection attempt failed: {str(e)}")
-                        continue
+                sorted_comps = sorted(scored, key=lambda x: x['selection_score'], reverse=True)
+                return sorted_comps[:5]
+            
+            # Call LLM with fallback
+            llm_service = get_llm_service_for_module3()
+            result = await llm_service.call_llm_with_fallback(
+                prompt=prompt,
+                system_prompt="You are a competitive intelligence analyst. Return only valid JSON.",
+                temperature=0.1,
+                max_tokens=500,
+                response_format="text",  # We'll parse manually
+                fallback_handler=fallback_handler
+            )
+            
+            if result["success"] and isinstance(result["content"], str):
+                # Extract JSON array
+                import re
+                json_match = re.search(r'\[.*?\]', result["content"], re.DOTALL)
+                if json_match:
+                    selected_names = json.loads(json_match.group())
+                    
+                    # Find competitors by name
+                    top_5 = []
+                    for name in selected_names[:5]:
+                        for comp in classified_competitors:
+                            if comp['name'].lower() == name.lower():
+                                top_5.append(comp)
+                                break
+                    
+                    if len(top_5) >= 3:  # At least 3 valid selections
+                        logger.info(f"LLM selected: {[c['name'] for c in top_5]}")
+                        return top_5
+            
+            # If LLM parsing failed, use fallback
+            return fallback_handler()
         
         except Exception as e:
-            logger.warning(f"LLM selection failed: {str(e)}")
-        
-        # Fallback: Select top 5 by quality score
-        logger.info("Using fallback selection (quality score)")
-        scored = []
-        for comp in classified_competitors:
-            score = 0
-            # Prioritize direct competitors
-            if comp.get('competitor_type') == 'direct':
-                score += 10
-            # Add similarity score
-            score += comp.get('similarity_score', 0) * 10
-            # Add data quality
-            if comp.get('description'): score += 2
-            if comp.get('features'): score += 3
-            if comp.get('url'): score += 1
+            logger.warning(f"LLM selection failed: {str(e)}, using fallback")
+            # Fallback: Select top 5 by quality score
+            scored = []
+            for comp in classified_competitors:
+                score = 0
+                if comp.get('competitor_type') == 'direct':
+                    score += 10
+                score += comp.get('similarity_score', 0) * 10
+                if comp.get('description'): score += 2
+                if comp.get('features'): score += 3
+                if comp.get('url'): score += 1
+                scored.append({**comp, 'selection_score': score})
             
-            scored.append({**comp, 'selection_score': score})
-        
-        sorted_comps = sorted(scored, key=lambda x: x['selection_score'], reverse=True)
-        return sorted_comps[:5]
+            sorted_comps = sorted(scored, key=lambda x: x['selection_score'], reverse=True)
+            return sorted_comps[:5]
     
     @staticmethod
     async def _scrape_top_competitors(
-        top_competitors: List[Dict[str, Any]]
+        top_candidates: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Step 6: Web Scraping - Extract Features & Pricing for Top 5
-        Scrapes competitor websites to get detailed feature lists and pricing
+        Step 6: Web Scraping with Fallback - Extract Features & Pricing for Top 5
+        
+        Strategy:
+        1. Try scraping each competitor from top 10 candidates
+        2. If scraping succeeds, add to top 5
+        3. If scraping fails, try LLM feature extraction from description
+        4. Continue until we have 5 enriched competitors
         """
         scraper = get_web_scraper_service()
-        enriched = []
+        enriched_top_5 = []
+        scraped_count = 0
+        llm_extracted_count = 0
         
-        for comp in top_competitors:
+        logger.info(f"Attempting to enrich {len(top_candidates)} candidates (need 5 successful)")
+        
+        for comp in top_candidates:
+            if len(enriched_top_5) >= 5:
+                break
+            
             if not comp.get('url'):
-                enriched.append(comp)
+                logger.warning(f"  ✗ No URL for {comp['name']}, skipping")
                 continue
             
+            # Try web scraping first
             try:
                 result = await scraper.scrape_competitor_data(comp['url'], comp['name'])
                 
-                if result.get('scrape_success'):
-                    enriched.append({
+                if result.get('scrape_success') and result.get('features'):
+                    # Scraping succeeded with features
+                    enriched_top_5.append({
                         **comp,
                         'enriched': True,
+                        'data_source': 'scraped',
                         'features': result.get('features', []),
                         'pricing': result.get('pricing'),
                         'target_audience': result.get('target_audience'),
                         'product_type': result.get('product_type'),
                         'key_benefits': result.get('key_benefits', [])
                     })
-                    logger.info(f"  ✓ Scraped: {comp['name']}")
+                    scraped_count += 1
+                    logger.info(f"  ✓ Scraped: {comp['name']} ({len(result.get('features', []))} features)")
                 else:
-                    enriched.append(comp)
-                    logger.warning(f"  ✗ Scraping failed: {comp['name']}")
+                    # Scraping failed - try LLM extraction from description
+                    logger.warning(f"  ⚠ Scraping failed for {comp['name']}, trying LLM extraction...")
+                    llm_result = await ProductionPipelineService._llm_extract_features_from_description(
+                        comp['name'],
+                        comp.get('description', '')
+                    )
+                    
+                    if llm_result.get('success') and llm_result.get('features'):
+                        enriched_top_5.append({
+                            **comp,
+                            'enriched': True,
+                            'data_source': 'llm_extracted',
+                            'features': llm_result.get('features', []),
+                            'pricing': llm_result.get('pricing', 'Unknown'),
+                            'target_audience': llm_result.get('target_audience'),
+                            'product_type': llm_result.get('product_type')
+                        })
+                        llm_extracted_count += 1
+                        logger.info(f"  ✓ LLM extracted: {comp['name']} ({len(llm_result.get('features', []))} features)")
+                    else:
+                        logger.warning(f"  ✗ Both scraping and LLM failed for {comp['name']}, skipping")
+                        
             except Exception as e:
-                logger.warning(f"  ✗ Failed to scrape {comp['name']}: {str(e)}")
-                enriched.append(comp)
+                logger.warning(f"  ✗ Error processing {comp['name']}: {str(e)}")
+                continue
         
-        return enriched
+        logger.info(f"Enrichment complete: {len(enriched_top_5)} competitors "
+                   f"({scraped_count} scraped, {llm_extracted_count} LLM-extracted)")
+        
+        return enriched_top_5
+    
+    @staticmethod
+    async def _llm_extract_features_from_description(
+        competitor_name: str,
+        competitor_description: str
+    ) -> Dict[str, Any]:
+        """
+        Fallback: Extract features from competitor description using LLM with automatic fallback
+        Only extracts what's mentioned in the description - NO HALLUCINATION
+        """
+        if not competitor_description or len(competitor_description) < 20:
+            return {"success": False, "features": []}
+        
+        prompt = f"""Extract product features from the following competitor description.
+
+COMPETITOR: {competitor_name}
+DESCRIPTION: {competitor_description}
+
+INSTRUCTIONS:
+1. Extract ONLY features that are explicitly mentioned or clearly implied in the description
+2. DO NOT invent or assume features that aren't mentioned
+3. Be conservative - if unsure, don't include it
+4. Return a list of 3-10 features maximum
+5. Keep features concise (2-5 words each)
+
+Return ONLY a JSON object:
+{{
+    "features": ["feature 1", "feature 2", ...],
+    "pricing": "pricing info if mentioned, otherwise null",
+    "product_type": "type of product if clear, otherwise null"
+}}
+
+Return ONLY the JSON, nothing else:"""
+        
+        try:
+            from app.services.shared.unified_llm_service import get_llm_service_for_module3
+            
+            # Define fallback handler - extract basic features from description
+            def fallback_handler():
+                # Simple keyword extraction as fallback
+                keywords = []
+                description_lower = competitor_description.lower()
+                
+                # Common feature keywords
+                feature_keywords = [
+                    'analytics', 'dashboard', 'reporting', 'integration', 'api',
+                    'automation', 'collaboration', 'real-time', 'cloud', 'mobile',
+                    'security', 'customization', 'notifications', 'search', 'export'
+                ]
+                
+                for keyword in feature_keywords:
+                    if keyword in description_lower:
+                        keywords.append(keyword.title())
+                
+                return {
+                    "features": keywords[:5] if keywords else ["Feature extraction unavailable"],
+                    "pricing": None,
+                    "product_type": None
+                }
+            
+            # Call LLM with fallback
+            llm_service = get_llm_service_for_module3()
+            result = await llm_service.call_llm_with_fallback(
+                prompt=prompt,
+                system_prompt="You extract features from product descriptions. Return only valid JSON. Never invent features.",
+                temperature=0.1,
+                max_tokens=500,
+                response_format="json",
+                fallback_handler=fallback_handler
+            )
+            
+            if result["success"]:
+                content = result["content"]
+                features = content.get('features', [])
+                
+                if features and len(features) > 0:
+                    return {
+                        "success": True,
+                        "features": features[:10],
+                        "pricing": content.get('pricing'),
+                        "product_type": content.get('product_type')
+                    }
+            
+            # If no features extracted, use fallback
+            return {"success": False, "features": []}
+            
+        except Exception as e:
+            logger.error(f"LLM feature extraction failed: {str(e)}")
+            return {"success": False, "features": []}
     
     @staticmethod
     async def _llm_structure_output(
@@ -653,7 +809,7 @@ Return ONLY the JSON array, nothing else:"""
             return {"preprocessed": {}, "llm_analysis": {}}
     
     @staticmethod
-    def _build_clean_response(
+    async def _build_clean_response(
         product_info: Dict[str, Any],
         keywords: List[str],
         top_5_enriched: List[Dict[str, Any]],
@@ -687,8 +843,8 @@ Return ONLY the JSON array, nothing else:"""
             }
             clean_top_5.append(clean_comp)
         
-        # Build feature matrix from enriched top 5
-        feature_matrix = ProductionPipelineService._build_feature_matrix(
+        # Build feature matrix from enriched top 5 (using LLM)
+        feature_matrix = await ProductionPipelineService._build_feature_matrix(
             product_info, top_5_enriched
         )
         
@@ -768,64 +924,41 @@ Return ONLY the JSON array, nothing else:"""
 
     
     @staticmethod
-    def _build_feature_matrix(
+    async def _build_feature_matrix(
         product_info: Dict[str, Any],
         competitors: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Build feature comparison matrix - ONLY use real scraped features"""
-        # Only include competitors that have scraped features
-        enriched_competitors = [c for c in competitors if c.get('enriched') and c.get('features')]
+        """
+        Build feature comparison matrix using LLM-based intelligent matching
+        ALWAYS includes ALL user features and shows user product FIRST
+        """
+        from .feature_matrix_service import FeatureMatrixService
         
-        if not enriched_competitors:
-            # No enriched data, return minimal matrix
+        try:
+            # Use the LLM-based feature matrix service
+            matrix = await FeatureMatrixService.build_feature_matrix(
+                user_product_name=product_info['name'],
+                user_features=product_info.get('features', []),
+                competitors=competitors,
+                max_competitors=5
+            )
+            
+            logger.info(f"✓ Built feature matrix with {len(matrix['features'])} features for {len(matrix['products'])} products")
+            return matrix
+            
+        except Exception as e:
+            logger.error(f"Feature matrix building failed: {str(e)}")
+            
+            # Fallback: Simple matrix with user features only
+            user_features = product_info.get('features', [])
             return {
-                "features": product_info.get('features', [])[:10],
+                "features": user_features,
                 "products": [{
                     "name": product_info['name'],
                     "is_user_product": True,
-                    "feature_support": {
-                        feat: True for feat in product_info.get('features', [])[:10]
-                    }
+                    "feature_support": {feat: True for feat in user_features}
                 }]
             }
-        
-        # Collect ONLY real features from user + enriched competitors
-        all_features = set(product_info.get('features', []))
-        for comp in enriched_competitors:
-            if comp.get('features'):
-                all_features.update(comp.get('features', []))
-        
-        # Limit to reasonable number
-        feature_list = list(all_features)[:12]
-        
-        # Build matrix
-        matrix = {
-            "features": feature_list,
-            "products": []
-        }
-        
-        # Add user's product
-        matrix["products"].append({
-            "name": product_info['name'],
-            "is_user_product": True,
-            "feature_support": {
-                feat: feat in product_info.get('features', [])
-                for feat in feature_list
-            }
-        })
-        
-        # Add ONLY enriched competitors (with real data)
-        for comp in enriched_competitors[:5]:  # Max 5 competitors
-            matrix["products"].append({
-                "name": comp['name'],
-                "is_user_product": False,
-                "feature_support": {
-                    feat: feat in comp.get('features', [])
-                    for feat in feature_list
-                }
-            })
-        
-        return matrix
     
     @staticmethod
     def _build_comparison(

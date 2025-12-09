@@ -1,7 +1,11 @@
 """
-LLM-Based Validation Service (Token-Optimized)
-Uses LLM to evaluate ideas efficiently with minimal token usage
-Supports free APIs (OpenRouter) and local models
+LLM-Based Validation Service with Multi-Provider Fallback
+Uses LLM to evaluate ideas with automatic fallback:
+1. OpenRouter API (all keys)
+2. Groq API (all keys)
+3. HuggingFace local model
+
+NO HARDCODED RESPONSES - Always uses actual LLM inference
 """
 
 import json
@@ -11,28 +15,27 @@ from datetime import datetime
 from app.db.models.validation_result_model import Score
 from app.db.models.idea_model import IdeaResponse
 from app.db.models.pain_points_model import PainPoint
-from app.services.shared.llm_service import LLMService
+from app.services.shared.unified_llm_service import get_llm_service_for_module2
 from app.services.module2_validation.external_data_service import get_external_data_service
 from app.core.logging import logger
 
 
 class LLMValidator:
     """
-    Token-optimized LLM validator using:
-    - Prompt caching to reduce token usage
-    - Concise prompts with structured output
-    - Free APIs (OpenRouter with free models)
-    - Batch evaluation when possible
+    Token-optimized LLM validator with automatic fallback:
+    1. OpenRouter API (all keys)
+    2. Groq API (all keys)
+    3. HuggingFace local model
+    
+    NO HARDCODED RESPONSES - Always uses actual LLM inference
     """
     
     # Cache for evaluation results (in-memory, can be extended to Redis)
     _evaluation_cache: Dict[str, Score] = {}
     
     def __init__(self):
-        self.llm_service = LLMService()
+        self.llm_service = get_llm_service_for_module2()
         self.external_data_service = get_external_data_service()
-        # Use efficient free models from OpenRouter
-        self.model = "mistral-7b-instruct"  # Fast, free model
         self.temperature = 0.2  # Lower temp = more consistent, fewer tokens
         self.max_tokens = 800  # Reduced from 1500 for efficiency
     
@@ -42,7 +45,7 @@ class LLMValidator:
         pain_points: List[PainPoint]
     ) -> Score:
         """
-        Evaluate problem clarity with caching and token optimization
+        Evaluate problem clarity with caching and automatic fallback
         """
         # Check cache first
         cache_key = self._get_cache_key("problem_clarity", idea.id)
@@ -67,9 +70,8 @@ class LLMValidator:
                 recommendations=result.get("recommendations", [])[:2],  # Limit to 2
                 evidence=result.get("evidence", {}),
                 metadata={
-                    "evaluation_type": "llm_based",
+                    "evaluation_type": "llm_based_with_fallback",
                     "timestamp": datetime.utcnow().isoformat(),
-                    "model": self.model,
                     "cached": False
                 }
             )
@@ -79,8 +81,9 @@ class LLMValidator:
             return score
             
         except Exception as e:
-            logger.error(f"LLM evaluation failed for problem clarity: {str(e)}")
-            return self._create_fallback_score("problem_clarity", str(e))
+            logger.error(f"All LLM providers failed for problem clarity: {str(e)}")
+            # Re-raise - let orchestrator handle
+            raise Exception(f"Unable to evaluate problem clarity. All LLM providers failed: {str(e)}")
     
     async def evaluate_market_demand(
         self,
@@ -88,7 +91,7 @@ class LLMValidator:
         pain_points: List[PainPoint]
     ) -> Score:
         """
-        Evaluate market demand with real external data
+        Evaluate market demand with real external data and automatic fallback
         """
         cache_key = self._get_cache_key("market_demand", idea.id)
         if cache_key in self._evaluation_cache:
@@ -133,9 +136,8 @@ class LLMValidator:
                     }
                 },
                 metadata={
-                    "evaluation_type": "llm_based_with_external_data",
+                    "evaluation_type": "llm_based_with_fallback",
                     "timestamp": datetime.utcnow().isoformat(),
-                    "model": self.model,
                     "cached": False,
                     "data_sources": ["reddit", "hackernews", "github"]
                 }
@@ -145,8 +147,9 @@ class LLMValidator:
             return score
             
         except Exception as e:
-            logger.error(f"LLM evaluation failed for market demand: {str(e)}")
-            return self._create_fallback_score("market_demand", str(e))
+            logger.error(f"All LLM providers failed for market demand: {str(e)}")
+            # Re-raise - let orchestrator handle
+            raise Exception(f"Unable to evaluate market demand. All LLM providers failed: {str(e)}")
     
     async def evaluate_solution_fit(
         self,
@@ -154,7 +157,7 @@ class LLMValidator:
         pain_points: List[PainPoint]
     ) -> Score:
         """
-        Evaluate solution fit with caching and token optimization
+        Evaluate solution fit with caching and automatic fallback
         """
         cache_key = self._get_cache_key("solution_fit", idea.id)
         if cache_key in self._evaluation_cache:
@@ -177,9 +180,8 @@ class LLMValidator:
                 recommendations=result.get("recommendations", [])[:2],
                 evidence=result.get("evidence", {}),
                 metadata={
-                    "evaluation_type": "llm_based",
+                    "evaluation_type": "llm_based_with_fallback",
                     "timestamp": datetime.utcnow().isoformat(),
-                    "model": self.model,
                     "cached": False
                 }
             )
@@ -188,15 +190,16 @@ class LLMValidator:
             return score
             
         except Exception as e:
-            logger.error(f"LLM evaluation failed for solution fit: {str(e)}")
-            return self._create_fallback_score("solution_fit", str(e))
+            logger.error(f"All LLM providers failed for solution fit: {str(e)}")
+            # Re-raise - let orchestrator handle
+            raise Exception(f"Unable to evaluate solution fit. All LLM providers failed: {str(e)}")
     
     async def evaluate_differentiation(
         self,
         idea: IdeaResponse
     ) -> Score:
         """
-        Evaluate differentiation with real competitor data
+        Evaluate differentiation with real competitor data and automatic fallback
         """
         cache_key = self._get_cache_key("differentiation", idea.id)
         if cache_key in self._evaluation_cache:
@@ -241,9 +244,8 @@ class LLMValidator:
                     }
                 },
                 metadata={
-                    "evaluation_type": "llm_based_with_competitor_data",
+                    "evaluation_type": "llm_based_with_fallback",
                     "timestamp": datetime.utcnow().isoformat(),
-                    "model": self.model,
                     "cached": False,
                     "data_sources": ["hackernews", "github"]
                 }
@@ -253,8 +255,9 @@ class LLMValidator:
             return score
             
         except Exception as e:
-            logger.error(f"LLM evaluation failed for differentiation: {str(e)}")
-            return self._create_fallback_score("differentiation", str(e))
+            logger.error(f"All LLM providers failed for differentiation: {str(e)}")
+            # Re-raise - let orchestrator handle
+            raise Exception(f"Unable to evaluate differentiation. All LLM providers failed: {str(e)}")
     
     def _get_cache_key(self, metric: str, idea_id: str) -> str:
         """Generate cache key for evaluation results"""
@@ -406,7 +409,7 @@ Return JSON with:
 - score: 1-5 (based on ACTUAL competitor data - more competitors = higher demand score)
 - justifications: 2-3 specific observations citing the REAL products/repos found above
 - recommendations: 2-3 personalized actions based on the actual market data
-- evidence: {{"demand_level": "high|medium|low", "competitors_found": number, "market_validation": "strong|moderate|weak"}}
+- evidence: {{"demand_level": "high|medium|low", "competitors_found": {total_found}, "market_validation": "strong|moderate|weak"}}
 
 Be data-driven - cite specific products, stars, upvotes from the data above."""
     
@@ -549,27 +552,4 @@ Return JSON with:
 - evidence: {{"innovation_level": "breakthrough|significant|incremental|minimal", "competition_level": "high|medium|low|none", "differentiation_strength": "strong|moderate|weak"}}
 
 Be specific - compare this idea directly to the actual competitors found. Cite specific product names."""
-    
-    def _create_fallback_score(self, metric_name: str, error_message: str) -> Score:
-        """Create a fallback score when LLM evaluation fails"""
-        return Score(
-            value=3,
-            justifications=[
-                f"Unable to complete LLM evaluation for {metric_name}",
-                "Using neutral score due to evaluation error",
-                f"Error: {error_message[:100]}"
-            ],
-            recommendations=[
-                "Retry validation to get proper evaluation",
-                "Check system logs for details"
-            ],
-            evidence={
-                "error": True,
-                "error_message": error_message,
-                "evaluation_type": "fallback"
-            },
-            metadata={
-                "evaluation_type": "fallback",
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
+

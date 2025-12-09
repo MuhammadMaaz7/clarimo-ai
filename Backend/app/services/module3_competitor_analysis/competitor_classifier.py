@@ -20,9 +20,9 @@ class CompetitorClassifier:
     4. Source matching
     """
     
-    # Classification thresholds
-    DIRECT_THRESHOLD = 0.25  # Similarity score >= 0.25 = Direct
-    INDIRECT_THRESHOLD = 0.10  # Similarity score >= 0.10 = Indirect
+    # Classification thresholds (lowered for better detection)
+    DIRECT_THRESHOLD = 0.15  # Similarity score >= 0.15 = Direct (was 0.25)
+    INDIRECT_THRESHOLD = 0.08  # Similarity score >= 0.08 = Indirect (was 0.10)
     
     @staticmethod
     def classify_competitors(
@@ -67,8 +67,13 @@ class CompetitorClassifier:
                 competitor
             )
             
+            # Calculate source priority bonus
+            source_bonus = CompetitorClassifier._calculate_source_priority(
+                competitor.get('source', '')
+            )
+            
             # Adjust similarity score with bonuses
-            adjusted_score = similarity_score + feature_bonus + topic_bonus
+            adjusted_score = similarity_score + feature_bonus + topic_bonus + source_bonus
             adjusted_score = min(adjusted_score, 1.0)  # Cap at 1.0
             
             # Classify based on adjusted score
@@ -247,6 +252,30 @@ class CompetitorClassifier:
         bonus = overlap_ratio * 0.10
         
         return bonus
+    
+    @staticmethod
+    def _calculate_source_priority(source: str) -> float:
+        """
+        Calculate source priority bonus
+        
+        Priority (highest to lowest):
+        1. App Store / Play Store (0.10) - Highest priority
+        2. Google Search (0.07) - Second priority
+        3. GitHub (0.04) - Third priority
+        4. Product Hunt (0.01) - Lowest priority
+        """
+        source = source.lower()
+        
+        if 'app_store' in source or 'play_store' in source:
+            return 0.10  # 1st priority - App/Play Store
+        elif 'google' in source:
+            return 0.07  # 2nd priority - Google Search
+        elif 'github' in source:
+            return 0.04  # 3rd priority - GitHub
+        elif 'product_hunt' in source or 'producthunt' in source:
+            return 0.01  # 4th priority - Product Hunt (lowest)
+        else:
+            return 0.02  # Default for unknown sources
     
     @staticmethod
     def get_classification_summary(

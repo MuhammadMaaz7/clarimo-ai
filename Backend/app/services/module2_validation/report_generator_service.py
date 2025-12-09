@@ -10,7 +10,7 @@ from app.db.models.idea_model import IdeaResponse
 from app.db.models.validation_result_model import (
     Score, ValidationReport
 )
-from app.services.shared.llm_service import LLMService
+from app.services.shared.unified_llm_service import get_llm_service_for_module2
 from app.core.logging import logger
 
 
@@ -27,7 +27,7 @@ class ReportGeneratorService:
     """
     
     def __init__(self):
-        self.llm_service = LLMService()
+        self.llm_service = get_llm_service_for_module2()
     
     async def generate_validation_report(
         self,

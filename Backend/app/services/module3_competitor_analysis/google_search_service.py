@@ -201,9 +201,21 @@ class GoogleSearchService:
                 # Extract company/product name from title
                 name = self._extract_product_name(info["title"])
                 
+                # Truncate description at sentence boundary
+                description = info["snippet"]
+                if len(description) > 300:
+                    # Find last sentence ending before 300 chars
+                    truncated = description[:300]
+                    last_period = max(truncated.rfind('.'), truncated.rfind('!'), truncated.rfind('?'))
+                    if last_period > 50:
+                        description = description[:last_period + 1].strip()
+                    else:
+                        last_space = truncated.rfind(' ')
+                        description = description[:last_space].strip() if last_space > 50 else truncated.strip()
+                
                 competitors.append({
                     "name": name,
-                    "description": info["snippet"][:200],
+                    "description": description,
                     "url": url,
                     "relevance_score": score,  # How many queries returned this
                     "source": "google_search"

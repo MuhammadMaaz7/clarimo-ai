@@ -62,3 +62,22 @@ Something other than only LLM calls
   * No hardcoded rules - uses ML to determine relevance
   * Minimum similarity threshold: 0.15 (adjustable)
   * Ranks by: relevance_score × semantic_similarity
+
+
+
+
+
+
+
+
+ALL THE APIs fallback should be a reliable huggingface local model
+Data must be saved in the files
+Show complete description of competitors on frontend
+save competitors in files at every step, i want to see semantically filtered ones too
+
+
+dont show similarty, full desc
+Competitor Weaknesses in market analysis 
+
+
+DONT SHOW LLM FAILURES on frontend, if API failing then Local Fallback on any reliable huggingface model, or show NETWORK OR SOMEOTHER ISSUE

@@ -54,79 +54,58 @@ class LLMAnalysisService:
         preprocessed_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Generate comprehensive competitive analysis using LLM
+        Generate comprehensive competitive analysis using LLM with automatic fallback
+        NEVER shows API failures to users - always returns a result
         
         Args:
             product_info: User's product information
             preprocessed_data: Pre-processed competitor data from intelligent analysis
             
         Returns:
-            Comprehensive analysis with insights
+            Comprehensive analysis with insights (always succeeds)
         """
-        logger.info("Generating LLM-based competitive analysis")
+        logger.info("Generating LLM-based competitive analysis with fallback chain")
         
         try:
-            # Build optimized prompt for cloud APIs
+            from app.services.shared.unified_llm_service import get_llm_service_for_module3
+            
+            # Build optimized prompt
             prompt = LLMAnalysisService._build_analysis_prompt(product_info, preprocessed_data)
             
-            # Try Groq FIRST (fast, high quality, cheap)
-            groq_keys = LLMAnalysisService._get_groq_keys()
+            system_prompt = """You are a brutally honest competitive intelligence analyst. Your job is to give REAL, UNBIASED analysis - not to make the user feel good. If their market is saturated, say so. If they have no unique advantages, say so. Use ONLY the data provided. Be specific and factual. Return valid JSON only."""
             
-            if groq_keys:
-                logger.info(f"Trying Groq API with {len(groq_keys)} key(s)")
-                for i, api_key in enumerate(groq_keys, 1):
-                    try:
-                        logger.info(f"Trying Groq key {i}/{len(groq_keys)}")
-                        response = LLMAnalysisService._call_groq(api_key, prompt)
-                        
-                        if response:
-                            logger.info(f"SUCCESS: Generated analysis with Groq key {i}")
-                            response['analysis_method'] = 'groq'
-                            return response
-                            
-                    except Exception as e:
-                        logger.error(f"Groq key {i} failed: {str(e)}")
-                        continue
+            # Define fallback handler
+            def fallback_handler():
+                return LLMAnalysisService._fallback_analysis(preprocessed_data)
             
-            # Fallback to OpenRouter
-            openrouter_keys = LLMAnalysisService._get_openrouter_keys()
+            # Call LLM with automatic fallback chain
+            llm_service = get_llm_service_for_module3()
+            result = await llm_service.call_llm_with_fallback(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0.1,
+                max_tokens=2500,
+                response_format="json",
+                fallback_handler=fallback_handler
+            )
             
-            if openrouter_keys:
-                logger.info(f"Falling back to OpenRouter with {len(openrouter_keys)} key(s)")
-                for i, api_key in enumerate(openrouter_keys, 1):
-                    try:
-                        logger.info(f"Trying OpenRouter key {i}/{len(openrouter_keys)}")
-                        response = LLMAnalysisService._call_openrouter(api_key, prompt)
-                        
-                        if response:
-                            logger.info(f"SUCCESS: Generated analysis with OpenRouter key {i}")
-                            response['analysis_method'] = 'openrouter'
-                            return response
-                            
-                    except Exception as e:
-                        logger.error(f"OpenRouter key {i} failed: {str(e)}")
-                        continue
-            
-            # Try HuggingFace as last resort (local, free)
-            from .huggingface_llm_service import HuggingFaceLLMService
-            
-            if HuggingFaceLLMService.is_available():
-                logger.info("Trying HuggingFace local LLM as fallback...")
-                hf_response = await HuggingFaceLLMService.generate_competitive_analysis(
-                    product_info=product_info,
-                    preprocessed_data=preprocessed_data
-                )
+            if result["success"]:
+                analysis = result["content"]
+                analysis['analysis_method'] = result['provider']
                 
-                if hf_response:
-                    logger.info("SUCCESS: Generated analysis with HuggingFace")
-                    return hf_response
-            
-            # All methods failed, use fallback
-            logger.warning("All LLM methods failed, using fallback analysis")
-            return LLMAnalysisService._fallback_analysis(preprocessed_data)
+                if 'note' in result:
+                    analysis['note'] = result['note']
+                
+                logger.info(f"✓ Analysis generated using {result['provider']}")
+                return analysis
+            else:
+                # This should rarely happen due to fallback_handler
+                logger.warning("All providers failed, using rule-based fallback")
+                return LLMAnalysisService._fallback_analysis(preprocessed_data)
             
         except Exception as e:
             logger.error(f"Analysis generation failed: {str(e)}")
+            # Always return something - never fail
             return LLMAnalysisService._fallback_analysis(preprocessed_data)
     
     @staticmethod

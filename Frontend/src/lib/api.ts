@@ -19,7 +19,7 @@ class ApiError extends Error {
 }
 
 /**
- * Enhanced fetch with automatic token handling and expiration detection
+ * Enhanced fetch with automatic token handling, expiration detection, and graceful error handling
  */
 async function apiRequest<T = any>(
   endpoint: string,
@@ -73,10 +73,20 @@ async function apiRequest<T = any>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        errorData.detail || errorData.message || `HTTP ${response.status}`,
-        response.status
-      );
+      
+      // Provide user-friendly error messages
+      let errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}`;
+      
+      // Map technical errors to user-friendly messages
+      if (response.status === 500) {
+        errorMessage = 'An error occurred while processing your request. Please try again.';
+      } else if (response.status === 503) {
+        errorMessage = 'Service temporarily unavailable. Please try again in a moment.';
+      } else if (response.status === 504) {
+        errorMessage = 'Request timed out. Please try again.';
+      }
+      
+      throw new ApiError(errorMessage, response.status);
     }
 
     return await response.json();
@@ -85,9 +95,21 @@ async function apiRequest<T = any>(
       throw error;
     }
 
-    // Network or other errors
+    // Network or other errors - provide user-friendly message
     console.error('API Request failed:', error);
-    throw new ApiError('Network error. Please check your connection.', 0);
+    
+    // Check if it's a network error
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new ApiError(
+        'Unable to connect to the server. Please check your internet connection and try again.',
+        0
+      );
+    }
+    
+    throw new ApiError(
+      'An unexpected error occurred. Please try again.',
+      0
+    );
   }
 }
 
