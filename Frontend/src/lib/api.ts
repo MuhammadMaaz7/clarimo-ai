@@ -1096,6 +1096,15 @@ export const api = {
         metadata: any;
       }>(`/competitor-analysis/analyses/${analysisId}`),
 
+    // Delete analysis by ID
+    delete: (analysisId: string) =>
+      apiRequest<{
+        success: boolean;
+        message: string;
+      }>(`/competitor-analysis/analyses/${analysisId}`, {
+        method: 'DELETE',
+      }),
+
     // Legacy endpoints (keep for backward compatibility)
     start: (productId: string) =>
       apiRequest<{

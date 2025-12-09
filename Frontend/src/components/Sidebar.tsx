@@ -2,8 +2,9 @@ import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useSidebar } from '../contexts/SidebarContext';
 import {
+  LayoutDashboard,
+  Sparkles,
   Lightbulb,
-  CheckCircle,
   Users,
   Target,
   Rocket,
@@ -13,8 +14,9 @@ import {
 import { Button } from './ui/button';
 
 const navigation = [
-  { name: 'Problem Discovery', href: '/', icon: Lightbulb },
-  { name: 'Idea Validation', href: '/ideas/new', icon: CheckCircle },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Problem Discovery', href: '/problem-discovery', icon: Sparkles },
+  { name: 'Idea Validation', href: '/ideas/new', icon: Lightbulb },
   { name: 'Competitor Analysis', href: '/competitor-analysis/new', icon: Target },
   { name: 'Customer Finding', href: '/customer-finding', icon: Users },
   { name: 'Launch Planning', href: '/launch-planning', icon: Rocket },

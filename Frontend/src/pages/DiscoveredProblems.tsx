@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { History, BarChart3, Calendar, ExternalLink, AlertCircle, FileText, Trash2 } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { History, BarChart3, Calendar, ExternalLink, AlertCircle, FileText, Trash2, Search } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { UnifiedLoadingSpinner, ErrorState, EmptyState, PageHeader, StatCard } from '../components/shared';
 import { unifiedToast } from '../lib/toast-utils';
 import { api } from '../lib/api';
 
@@ -28,6 +28,7 @@ const DiscoveredProblems = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     inputId: string;
@@ -93,6 +94,7 @@ const DiscoveredProblems = () => {
         description: 'Analysis deleted successfully!',
       });
       
+      closeDeleteConfirmation();
       await fetchAnalysisData();
     } catch (error) {
       console.error('Error deleting analysis:', error);
@@ -103,139 +105,253 @@ const DiscoveredProblems = () => {
     }
   };
 
+  // Filter history based on search query
+  const filteredHistory = history.filter((item) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return item.original_query.toLowerCase().includes(query);
+  });
+
   if (loading) {
     return (
-      <div className="responsive-container">
-        <UnifiedLoadingSpinner size="lg" text="Loading your discoveries..." />
+      <div className="container mx-auto px-4 py-8">
+        <Card className="glass border-border/50">
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <History className="h-12 w-12 animate-spin mx-auto text-primary mb-4" />
+              <p className="text-muted-foreground">Loading your discoveries...</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="responsive-container">
-        <ErrorState
-          title="Failed to load discoveries"
-          message={error}
-          onRetry={fetchAnalysisData}
-        />
+      <div className="container mx-auto px-4 py-8">
+        <Card className="glass border-border/50">
+          <CardContent className="pt-6">
+            <div className="text-center py-12 text-red-500">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+              <p className="text-lg font-semibold">Failed to load discoveries</p>
+              <p className="text-sm text-muted-foreground mt-2">{error}</p>
+              <Button onClick={fetchAnalysisData} className="mt-4">
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="responsive-container">
-      <PageHeader
-        title="My Discovered Problems"
-        description="View and explore the problems you've discovered from online communities"
-        icon={FileText}
-      />
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="responsive-grid-2col mt-8">
-          <StatCard
-            title="Discoveries"
-            value={stats.total_analyses}
-            icon={BarChart3}
-            description="Total analyses run"
-          />
-          
-          <StatCard
-            title="Problems Found"
-            value={stats.total_pain_points}
-            icon={AlertCircle}
-            description="Unique problems discovered"
-            iconClassName="bg-success/10"
-          />
-          
-          <StatCard
-            title="Discussion Themes"
-            value={stats.total_clusters}
-            icon={History}
-            description="Conversation clusters"
-            iconClassName="bg-accent/10"
-          />
-          
-          <StatCard
-            title="Latest Discovery"
-            value={stats.latest_analysis ? formatDate(stats.latest_analysis).split(',')[0] : 'Never'}
-            icon={Calendar}
-            description="Most recent analysis"
-          />
+    <div className="container mx-auto px-4 py-8">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <FileText className="h-8 w-8 text-primary" />
+              My Discovered Problems
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              View and explore the problems you've discovered from online communities
+            </p>
+          </div>
+          <Button
+            onClick={() => window.location.href = '/problem-discovery'}
+            size="lg"
+            className="bg-gradient-to-r from-accent to-primary text-white glow hover:glow-sm hover:scale-[1.02] transition-all duration-300"
+          >
+            <BarChart3 className="mr-2 h-5 w-5" />
+            New Discovery
+          </Button>
         </div>
-      )}
 
-      {/* Analysis History */}
-      <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
-        <CardHeader>
-          <CardTitle className="text-xl text-white flex items-center gap-3">
-            <History className="h-6 w-6 text-blue-400" />
-            Your Discovered Problems
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {history.length === 0 ? (
-            <EmptyState
-              icon={FileText}
-              title="No Problems Discovered Yet"
-              description="Start discovering problems from online communities to see them here."
-              actionLabel="Start Problem Discovery"
-              onAction={() => window.location.href = '/'}
-            />
-          ) : (
-            <div className="space-y-4">
-              {history.map((item) => (
-                <div
-                  key={item.input_id}
-                  className="glass border-border/30 bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-white font-medium mb-2 leading-relaxed">
-                        "{item.original_query}"
-                      </h3>
-                      <div className="flex items-center gap-6 text-sm text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="h-4 w-4 text-green-400" />
-                          {item.pain_points_count} problems discovered
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <History className="h-4 w-4 text-purple-400" />
-                          {item.total_clusters} discussion themes
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4 text-orange-400" />
-                          {formatDate(item.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDeleteConfirmation(item.input_id, item.original_query)}
-                        className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                        title="Delete analysis"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => viewAnalysis(item.input_id)}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                      >
-                        View Problems <ExternalLink className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="glass border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats.total_analyses}</p>
+                    <p className="text-xs text-muted-foreground">Total Discoveries</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+            
+            <Card className="glass border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats.total_pain_points}</p>
+                    <p className="text-xs text-muted-foreground">Problems Found</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="glass border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-500/10 rounded-lg">
+                    <History className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats.total_clusters}</p>
+                    <p className="text-xs text-muted-foreground">Discussion Themes</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="glass border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <Calendar className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{stats.latest_analysis ? formatDate(stats.latest_analysis).split(',')[0] : 'Never'}</p>
+                    <p className="text-xs text-muted-foreground">Latest Discovery</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Search Bar */}
+        {history.length > 0 && (
+          <Card className="glass border-border/50">
+            <CardContent className="pt-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search discoveries by query..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 glass border-border/50"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Analysis History */}
+        {filteredHistory.length === 0 && history.length === 0 ? (
+          <Card className="glass border-border/50">
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Problems Discovered Yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Start discovering problems from online communities to see them here
+                </p>
+                <Button
+                  onClick={() => window.location.href = '/problem-discovery'}
+                  className="bg-gradient-to-r from-accent to-primary text-white"
+                >
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Start Problem Discovery
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : filteredHistory.length === 0 ? (
+          <Card className="glass border-border/50">
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <Search className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Results Found</h3>
+                <p className="text-muted-foreground mb-6">
+                  Try adjusting your search query
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setSearchQuery('')}
+                  className="glass border-border/50"
+                >
+                  Clear Search
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {filteredHistory.map((item) => (
+              <Card
+                key={item.input_id}
+                className="glass border-border/50 hover:border-primary/50 transition-all duration-300 cursor-pointer"
+                onClick={() => viewAnalysis(item.input_id)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-xl mb-2">"{item.original_query}"</CardTitle>
+                      <CardDescription>
+                        {item.pain_points_count} problems discovered • {item.total_clusters} discussion themes
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">
+                        Created: {formatDate(item.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="glass border-border/50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewAnalysis(item.input_id);
+                      }}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      View Problems
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="glass border-border/50 text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteConfirmation(item.input_id, item.original_query);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Results Count */}
+        {!loading && filteredHistory.length > 0 && (
+          <div className="text-center text-sm text-muted-foreground">
+            Showing {filteredHistory.length} of {history.length} discovery(ies)
+          </div>
+        )}
+      </div>
 
       {/* Confirmation Modal */}
       <ConfirmationModal

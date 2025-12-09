@@ -11,7 +11,7 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Loader2, Plus, X, TrendingUp, Target, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, X, Target, ExternalLink } from 'lucide-react';
 import api from '../lib/api';
 import { unifiedToast } from '../lib/toast-utils';
 
@@ -181,14 +181,19 @@ export default function CompetitorAnalysisNew() {
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">{analysisResult.product.name}</h1>
-              <p className="text-muted-foreground">
-                Analysis completed in {analysisResult.execution_time.toFixed(1)}s • {analysisResult.metadata.total_competitors_analyzed} competitors analyzed
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-gradient-to-br from-accent to-primary p-2">
+                <Target className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">{analysisResult.product.name}</h1>
+                <p className="text-sm text-muted-foreground">
+                  Analysis completed in {analysisResult.execution_time.toFixed(1)}s • {analysisResult.metadata.total_competitors_analyzed} competitors analyzed
+                </p>
+              </div>
             </div>
             {!searchParams.get('id') && (
-              <Button onClick={() => setAnalysisResult(null)}>
+              <Button onClick={() => setAnalysisResult(null)} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
                 New Analysis
               </Button>
@@ -274,12 +279,10 @@ export default function CompetitorAnalysisNew() {
                           <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
                             <div className="text-2xl font-bold text-red-600 mb-1">{analysisResult.market_insights.direct_competitors}</div>
                             <div className="text-sm text-muted-foreground">Direct Competitors</div>
-                            <div className="text-xs text-muted-foreground mt-1">High similarity (≥25%)</div>
                           </div>
                           <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
                             <div className="text-2xl font-bold text-yellow-600 mb-1">{analysisResult.market_insights.indirect_competitors}</div>
                             <div className="text-sm text-muted-foreground">Indirect Competitors</div>
-                            <div className="text-xs text-muted-foreground mt-1">Medium similarity (10-24%)</div>
                           </div>
                         </div>
                       </CardContent>
@@ -351,11 +354,7 @@ export default function CompetitorAnalysisNew() {
                                 {competitor.competitor_type === 'direct' ? 'Direct' : 'Indirect'}
                               </span>
                             )}
-                            {competitor.similarity_score !== undefined && (
-                              <span className="text-xs text-muted-foreground">
-                                {(competitor.similarity_score * 100).toFixed(0)}% similar
-                              </span>
-                            )}
+
                           </div>
                           <p className="text-xs text-muted-foreground">Source: {competitor.source}</p>
                         </div>
@@ -593,42 +592,35 @@ export default function CompetitorAnalysisNew() {
 
   // Show input form if no results
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Analyze Your Product</h1>
-            <p className="text-muted-foreground">
-              Discover competitors and identify market opportunities
-            </p>
-          </div>
+        <div className="text-center space-y-2 mb-8">
+          <h1 className="text-3xl font-bold">Competitor Analysis</h1>
+          <p className="text-muted-foreground">
+            Discover competitors and identify market opportunities
+          </p>
         </div>
 
         {/* Form */}
         <Card className="glass border-border/50">
-          <CardHeader>
-            <CardTitle>Product Information</CardTitle>
-            <CardDescription>
-              Tell us about your product to find relevant competitors
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="pt-6 space-y-6">
             {/* Product Name */}
             <div className="space-y-2">
-              <Label htmlFor="productName">Product Name *</Label>
+              <Label htmlFor="productName" className="text-base">Product Name *</Label>
               <Input
                 id="productName"
                 placeholder="e.g., TaskMaster Pro"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 disabled={isAnalyzing}
+                className="glass border-border/50 focus:border-primary transition-all duration-300"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description" className="text-base">Description *</Label>
               <Textarea
                 id="description"
                 placeholder="Describe what your product does and who it's for..."
@@ -636,12 +628,13 @@ export default function CompetitorAnalysisNew() {
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isAnalyzing}
                 rows={4}
+                className="resize-none glass border-border/50 focus:border-primary transition-all duration-300"
               />
             </div>
 
             {/* Features */}
             <div className="space-y-2">
-              <Label>Key Features *</Label>
+              <Label className="text-base">Key Features *</Label>
               <div className="space-y-2">
                 {features.map((feature, index) => (
                   <div key={index} className="flex gap-2">
@@ -650,6 +643,7 @@ export default function CompetitorAnalysisNew() {
                       value={feature}
                       onChange={(e) => updateFeature(index, e.target.value)}
                       disabled={isAnalyzing}
+                      className="glass border-border/50 focus:border-primary transition-all duration-300"
                     />
                     {features.length > 1 && (
                       <Button
@@ -664,10 +658,12 @@ export default function CompetitorAnalysisNew() {
                   </div>
                 ))}
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={addFeature}
                   disabled={isAnalyzing}
+                  className="glass border-border/50 hover:border-primary transition-all duration-300"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Feature
@@ -675,52 +671,68 @@ export default function CompetitorAnalysisNew() {
               </div>
             </div>
 
-            {/* Pricing (Optional) */}
-            <div className="space-y-2">
-              <Label htmlFor="pricing">Pricing (Optional)</Label>
-              <Input
-                id="pricing"
-                placeholder="e.g., $9/month or Free"
-                value={pricing}
-                onChange={(e) => setPricing(e.target.value)}
-                disabled={isAnalyzing}
-              />
-            </div>
+            {/* Optional Fields Section */}
+            <div className="space-y-4 pt-4 border-t border-border/50">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Optional Information
+              </h3>
 
-            {/* Target Audience (Optional) */}
-            <div className="space-y-2">
-              <Label htmlFor="targetAudience">Target Audience (Optional)</Label>
-              <Input
-                id="targetAudience"
-                placeholder="e.g., Small businesses, Developers"
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-                disabled={isAnalyzing}
-              />
+              {/* Pricing (Optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="pricing">Pricing (Optional)</Label>
+                <Input
+                  id="pricing"
+                  placeholder="e.g., $9/month or Free"
+                  value={pricing}
+                  onChange={(e) => setPricing(e.target.value)}
+                  disabled={isAnalyzing}
+                  className="glass border-border/50 focus:border-primary transition-all duration-300"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your pricing model or plan
+                </p>
+              </div>
+
+              {/* Target Audience (Optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="targetAudience">Target Audience (Optional)</Label>
+                <Input
+                  id="targetAudience"
+                  placeholder="e.g., Small businesses, Developers"
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  disabled={isAnalyzing}
+                  className="glass border-border/50 focus:border-primary transition-all duration-300"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Who your product is designed for
+                </p>
+              </div>
             </div>
 
             {/* Submit Button */}
             <Button
-              className="w-full"
+              type="button"
               size="lg"
+              className="w-full bg-gradient-to-r from-accent to-primary text-white glow hover:glow-sm hover:scale-[1.02] transition-all duration-300 font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleAnalyze}
               disabled={isAnalyzing}
             >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Analyzing... (60-90s)
                 </>
               ) : (
                 <>
-                  <TrendingUp className="mr-2 h-4 w-4" />
+                  <Target className="mr-2 h-5 w-5" />
                   Analyze Competitors
                 </>
               )}
             </Button>
 
             {isAnalyzing && (
-              <div className="text-center space-y-2">
+              <div className="text-center space-y-1">
                 <p className="text-sm text-muted-foreground">
                   Discovering competitors from multiple sources...
                 </p>

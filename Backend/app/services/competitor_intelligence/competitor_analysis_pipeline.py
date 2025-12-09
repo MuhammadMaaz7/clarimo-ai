@@ -1092,3 +1092,13 @@ Return ONLY the JSON, nothing else:"""
         if doc:
             return doc["result"]
         return None
+    
+    @staticmethod
+    def delete_analysis(analysis_id: str, user_id: str) -> bool:
+        """Delete specific analysis by ID (synchronous)"""
+        result = db.competitor_analyses.delete_one({
+            "analysis_id": analysis_id,
+            "user_id": user_id
+        })
+        
+        return result.deleted_count > 0

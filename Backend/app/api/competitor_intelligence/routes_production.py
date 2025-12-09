@@ -212,3 +212,41 @@ async def get_analysis(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve analysis"
         )
+
+
+@router.delete("/analyses/{analysis_id}", status_code=status.HTTP_200_OK)
+async def delete_analysis(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete a specific analysis by ID
+    
+    Removes the analysis from the database
+    """
+    try:
+        success = CompetitorAnalysisPipeline.delete_analysis(
+            analysis_id=analysis_id,
+            user_id=current_user.id
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Analysis not found or you don't have permission to delete it"
+            )
+        
+        logger.info(f"Analysis deleted: {analysis_id} by user: {current_user.id}")
+        return {
+            "success": True,
+            "message": "Analysis deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete analysis: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete analysis"
+        )

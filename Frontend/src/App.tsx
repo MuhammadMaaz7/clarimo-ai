@@ -11,6 +11,7 @@ import { ValidationProvider } from "./contexts/ValidationContext";
 import { CompetitorProvider } from "./contexts/CompetitorContext";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import Dashboard from "./pages/Dashboard";
 import ProblemDiscovery from "./pages/ProblemDiscovery";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ComingSoon from "./pages/ComingSoon";
@@ -79,6 +80,11 @@ const AppContent = () => {
                   }>
                     <Routes>
                       <Route path="/" element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/problem-discovery" element={
                         <ProtectedRoute>
                           <ProblemDiscovery />
                         </ProtectedRoute>

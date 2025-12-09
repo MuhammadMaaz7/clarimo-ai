@@ -113,18 +113,15 @@ export default function IdeaSubmissionForm({
 
   return (
     <Card className="glass border-border/50">
-      <CardHeader>
-        <CardTitle className="text-2xl flex items-center gap-2">
-          <Lightbulb className="h-6 w-6 text-primary" />
-          {isEdit ? 'Edit Idea' : 'Submit Your Startup Idea'}
-        </CardTitle>
-        <CardDescription className="text-base">
-          {isEdit
-            ? 'Update your idea details to refine your validation'
-            : 'Provide details about your startup idea for comprehensive validation'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      {isEdit && (
+        <CardHeader>
+          <CardTitle className="text-xl">Edit Idea</CardTitle>
+          <CardDescription>
+            Update your idea details to refine your validation
+          </CardDescription>
+        </CardHeader>
+      )}
+      <CardContent className={isEdit ? '' : 'pt-6'}>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
           <div className="space-y-2">
