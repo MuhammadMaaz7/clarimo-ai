@@ -89,18 +89,18 @@ class LLMInsightsGenerator:
                 fallback_handler=fallback_handler
             )
             
-            if result["success"]:
-                analysis = result["content"]
-                analysis['analysis_method'] = result['provider']
-                
-                if 'note' in result:
-                    analysis['note'] = result['note']
-                
-                logger.info(f"✓ Analysis generated using {result['provider']}")
-                return analysis
+            # result is a string (JSON), not a dict
+            if isinstance(result, str):
+                try:
+                    analysis = json.loads(result)
+                    logger.info(f"✓ Analysis generated successfully")
+                    return analysis
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse LLM JSON response: {str(e)}")
+                    return LLMInsightsGenerator._fallback_analysis(preprocessed_data)
             else:
                 # This should rarely happen due to fallback_handler
-                logger.warning("All providers failed, using rule-based fallback")
+                logger.warning("Unexpected result type, using rule-based fallback")
                 return LLMInsightsGenerator._fallback_analysis(preprocessed_data)
             
         except Exception as e:

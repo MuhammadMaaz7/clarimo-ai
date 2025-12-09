@@ -48,7 +48,7 @@ class FeatureComparisonBuilder:
         max_competitors: int = 10
     ) -> Dict[str, Any]:
         """
-        Build a feature comparison matrix using LLM to intelligently match features
+        Build a comprehensive feature comparison matrix showing ALL features from user and competitors
         
         Args:
             user_product_name: Name of user's product
@@ -57,46 +57,65 @@ class FeatureComparisonBuilder:
             max_competitors: Maximum number of competitors to include
             
         Returns:
-            Feature matrix with intelligent feature matching
+            Feature matrix with ALL features (user + competitors)
         """
         try:
-            logger.info(f"Building feature matrix for {len(competitors)} competitors...")
+            logger.info(f"Building comprehensive feature matrix for {len(competitors)} competitors...")
             
             # Limit competitors
             competitors = competitors[:max_competitors]
             
-            # Build matrix structure
+            # Step 1: Collect ALL unique features from user + competitors
+            all_features = set(user_features)
+            
+            # Add competitor features
+            for competitor in competitors:
+                competitor_features = competitor.get('features', [])
+                if competitor_features:
+                    all_features.update(competitor_features)
+            
+            # Convert to sorted list for consistent ordering
+            all_features_list = sorted(list(all_features))
+            
+            logger.info(f"Total unique features across all products: {len(all_features_list)}")
+            logger.info(f"  - User features: {len(user_features)}")
+            logger.info(f"  - Additional competitor features: {len(all_features_list) - len(user_features)}")
+            
+            # Build matrix structure with ALL features
             matrix = {
-                "features": user_features,
+                "features": all_features_list,
                 "products": []
             }
             
-            # Add user's product (all features = True) - ALWAYS FIRST
+            # Step 2: Add user's product - check which features they have
             user_product_entry = {
                 "name": user_product_name,
                 "is_user_product": True,
                 "feature_support": {}
             }
             
-            # Mark ALL user features as TRUE for user's product
-            for feature in user_features:
-                user_product_entry["feature_support"][feature] = True
+            # User has their own features (TRUE), need to check competitor features
+            for feature in all_features_list:
+                if feature in user_features:
+                    user_product_entry["feature_support"][feature] = True
+                else:
+                    # This is a competitor feature - user doesn't have it
+                    user_product_entry["feature_support"][feature] = False
             
             matrix["products"].append(user_product_entry)
             
-            # For each competitor, use LLM to check ALL user features
+            # Step 3: For each competitor, check ALL features
             for competitor in competitors:
                 logger.info(f"Analyzing features for: {competitor.get('name')}")
                 
-                # Get competitor's scraped features if available
                 competitor_features = competitor.get('features', [])
                 
-                # Use LLM to check if competitor has each USER feature
+                # Use LLM to check if competitor has each feature
                 feature_support = await cls._analyze_competitor_features(
                     competitor_name=competitor.get('name', ''),
                     competitor_description=competitor.get('description', ''),
                     competitor_scraped_features=competitor_features,
-                    user_features=user_features  # Check ALL user features
+                    user_features=all_features_list  # Check ALL features
                 )
                 
                 competitor_entry = {
@@ -106,13 +125,18 @@ class FeatureComparisonBuilder:
                     "feature_support": {}
                 }
                 
-                # Ensure ALL user features are in the matrix (even if FALSE)
-                for feature in user_features:
-                    competitor_entry["feature_support"][feature] = feature_support.get(feature, {}).get('has_feature', False)
+                # Check each feature
+                for feature in all_features_list:
+                    if feature in competitor_features:
+                        # Competitor explicitly has this feature
+                        competitor_entry["feature_support"][feature] = True
+                    else:
+                        # Check LLM analysis
+                        competitor_entry["feature_support"][feature] = feature_support.get(feature, {}).get('has_feature', False)
                 
                 matrix["products"].append(competitor_entry)
             
-            logger.info(f"✓ Feature matrix built for {len(matrix['products'])} products")
+            logger.info(f"✓ Feature matrix built for {len(matrix['products'])} products with {len(all_features_list)} features")
             return matrix
             
         except Exception as e:
@@ -167,24 +191,30 @@ COMPETITOR PRODUCT:
 Name: {competitor_name}
 {context}
 
-USER'S PRODUCT FEATURES TO CHECK:
+FEATURES TO CHECK:
 {features_list}
 
 TASK:
-For each feature listed above, determine if the competitor has that feature based ONLY on the information provided above.
+For each feature listed above, determine if the competitor has that feature or similar functionality based ONLY on the information provided above.
 
 IMPORTANT RULES:
-- Look for the FUNCTIONALITY, not exact wording
-- If mentioned (directly or indirectly) → mark TRUE
-- If NOT mentioned → mark FALSE
+- Look for the FUNCTIONALITY, not exact wording (e.g., "AI voice generation" = "Voice synthesis with AI")
+- If the SAME or SIMILAR functionality is mentioned → mark TRUE
+- If NOT mentioned at all → mark FALSE
 - DO NOT assume or invent features - be conservative
 - If unsure → mark FALSE
-- Provide evidence for your decision
+- Provide brief evidence for your decision
+
+EXAMPLES:
+- Feature: "Real-time collaboration" → Competitor has "Team editing" → TRUE (same functionality)
+- Feature: "Cloud storage" → Competitor has "Online backup" → TRUE (similar functionality)
+- Feature: "Dark mode" → Not mentioned → FALSE
+- Feature: "AI-powered" → Competitor has "Machine learning" → TRUE (same technology)
 
 Return ONLY a JSON object in this exact format (no other text):
 {{
     "feature_analysis": [
-        {{"feature": "feature name", "has_feature": true/false, "evidence": "quote or reason"}},
+        {{"feature": "feature name", "has_feature": true/false, "evidence": "brief reason"}},
         ...
     ]
 }}

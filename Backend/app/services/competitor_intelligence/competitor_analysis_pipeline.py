@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime
 import os
 import re
+import json
 
 from app.services.shared.text_utils import truncate_at_sentence
 from .keyword_generator import KeywordGenerator
@@ -443,7 +444,7 @@ class CompetitorAnalysisPipeline:
                 for app in app_store_result.get('apps', []):
                     competitors.append({
                         "name": app['name'],
-                        "description": CompetitorAnalysisPipeline._truncate_at_sentence(app.get('description', ''), 300),
+                        "description": truncate_at_sentence(app.get('description', ''), 300),
                         "url": app.get('url'),
                         "source": "app_store",
                         "rating": app.get('rating')
@@ -453,7 +454,7 @@ class CompetitorAnalysisPipeline:
                 for app in play_store_result.get('apps', []):
                     competitors.append({
                         "name": app['name'],
-                        "description": CompetitorAnalysisPipeline._truncate_at_sentence(app.get('description', ''), 300),
+                        "description": truncate_at_sentence(app.get('description', ''), 300),
                         "url": app.get('url'),
                         "source": "play_store",
                         "rating": app.get('rating')
@@ -543,10 +544,11 @@ Return ONLY the JSON array, nothing else:"""
                 fallback_handler=fallback_handler
             )
             
-            if result["success"] and isinstance(result["content"], str):
+            # result is a string, not a dict
+            if isinstance(result, str):
                 # Extract JSON array
                 import re
-                json_match = re.search(r'\[.*?\]', result["content"], re.DOTALL)
+                json_match = re.search(r'\[.*?\]', result, re.DOTALL)
                 if json_match:
                     selected_names = json.loads(json_match.group())
                     
@@ -554,7 +556,7 @@ Return ONLY the JSON array, nothing else:"""
                     top_5 = []
                     for name in selected_names[:5]:
                         for comp in classified_competitors:
-                            if comp['name'].lower() == name.lower():
+                            if comp['name'].lower() == str(name).lower():
                                 top_5.append(comp)
                                 break
                     
@@ -730,17 +732,21 @@ Return ONLY the JSON, nothing else:"""
                 fallback_handler=fallback_handler
             )
             
-            if result["success"]:
-                content = result["content"]
-                features = content.get('features', [])
-                
-                if features and len(features) > 0:
-                    return {
-                        "success": True,
-                        "features": features[:10],
-                        "pricing": content.get('pricing'),
-                        "product_type": content.get('product_type')
-                    }
+            # result is a string (JSON), not a dict
+            if isinstance(result, str):
+                try:
+                    content = json.loads(result)
+                    features = content.get('features', [])
+                    
+                    if features and len(features) > 0:
+                        return {
+                            "success": True,
+                            "features": features[:10],
+                            "pricing": content.get('pricing'),
+                            "product_type": content.get('product_type')
+                        }
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse LLM JSON: {str(e)}")
             
             # If no features extracted, use fallback
             return {"success": False, "features": []}
