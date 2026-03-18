@@ -35,6 +35,7 @@ const CompetitorAnalysis = lazy(() => import("./pages/CompetitorAnalysis"));
 const CompetitorAnalysisNew = lazy(() => import("./pages/CompetitorAnalysisNew")); // Production-ready
 const CompetitorAnalysisHistory = lazy(() => import("./pages/CompetitorAnalysisHistory"));
 const CompetitorAnalysisDetail = lazy(() => import("./pages/CompetitorAnalysisDetail"));
+const LaunchPlanning = lazy(() => import("./pages/LaunchPlanning"));
 
 const queryClient = new QueryClient();
 
@@ -171,7 +172,7 @@ const AppContent = () => {
                       } />
                       <Route path="/launch-planning" element={
                         <ProtectedRoute>
-                          <ComingSoon />
+                          <LaunchPlanning />
                         </ProtectedRoute>
                       } />
                       <Route path="/go-to-market" element={

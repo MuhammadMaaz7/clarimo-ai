@@ -17,6 +17,9 @@ validation_results_collection = db["validation_results"]
 products_collection = db["products"]
 competitor_analyses_collection = db["competitor_analyses"]
 
+# Launch Planning Module collections
+launch_plans_collection = db["launch_plans"]
+
 # User collection indexes
 users_collection.create_index("email", unique=True)
 
@@ -53,3 +56,8 @@ competitor_analyses_collection.create_index([("product_id", 1), ("created_at", -
 competitor_analyses_collection.create_index([("user_id", 1), ("created_at", -1)])
 competitor_analyses_collection.create_index([("status", 1), ("created_at", 1)])
 competitor_analyses_collection.create_index([("product_id", 1), ("status", 1)])
+
+# Launch plans collection indexes
+launch_plans_collection.create_index("plan_id", unique=True)
+launch_plans_collection.create_index([("user_id", 1), ("created_at", -1)])
+launch_plans_collection.create_index([("status", 1), ("created_at", 1)])

@@ -401,3 +401,8 @@ def get_llm_service_for_module2() -> UnifiedLLMService:
 def get_llm_service_for_module3() -> UnifiedLLMService:
     """Get LLM service configured for Module 3 (Competitor Analysis)"""
     return UnifiedLLMService(provider_order=["groq", "openrouter", "huggingface"])
+
+
+def get_llm_service_for_module5() -> UnifiedLLMService:
+    """Get LLM service configured for Module 5 (Launch Planning)"""
+    return UnifiedLLMService(provider_order=["openrouter", "groq", "huggingface"])

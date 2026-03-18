@@ -12,6 +12,7 @@ import {
   History,
   AlertCircle,
   Activity,
+  Rocket
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -32,6 +33,10 @@ interface DashboardStats {
     totalCompetitors: number;
     latest?: string | null;
   };
+  launchPlanning: {
+    total: number;
+    latest?: string | null;
+  };
 }
 
 export default function Dashboard() {
@@ -50,10 +55,11 @@ export default function Dashboard() {
       setLoading(true);
 
       // Fetch stats from all modules
-      const [problemStats, ideaStats, competitorStats] = await Promise.allSettled([
+      const [problemStats, ideaStats, competitorStats, launchStats] = await Promise.allSettled([
         api.painPoints.getStats(),
         api.ideas.getAll(),
         api.competitorAnalyses.list(),
+        api.launchPlanning.getHistory(user?.id || ''),
       ]);
 
       console.log('Dashboard Data:', { problemStats, ideaStats, competitorStats });
@@ -70,6 +76,9 @@ export default function Dashboard() {
         competitorAnalysis: {
           total: 0,
           totalCompetitors: 0,
+        },
+        launchPlanning: {
+          total: 0,
         },
       };
 
@@ -115,6 +124,15 @@ export default function Dashboard() {
         console.error('Competitor stats failed:', competitorStats.reason);
       }
 
+      // Process launch planning stats
+      if (launchStats.status === 'fulfilled') {
+        const plans = Array.isArray(launchStats.value) ? launchStats.value : [];
+        dashboardStats.launchPlanning = {
+          total: plans.length,
+          latest: plans.length > 0 ? plans[0].created_at : undefined,
+        };
+      }
+
       console.log('Final Dashboard Stats:', dashboardStats);
       setStats(dashboardStats);
 
@@ -150,6 +168,17 @@ export default function Dashboard() {
             type: 'competitor',
             count: analyses.length,
             date: analyses[0].created_at,
+          });
+        }
+      }
+
+      if (launchStats.status === 'fulfilled') {
+        const plans = Array.isArray(launchStats.value) ? launchStats.value : [];
+        if (plans.length > 0) {
+          activities.push({
+            type: 'launch',
+            count: plans.length,
+            date: plans[0].created_at,
           });
         }
       }
@@ -276,17 +305,43 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Activity Stats */}
+            {/* Launch Planning Stats */}
             <Card className="glass border-border/50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2 bg-orange-500/10 rounded-lg">
-                    <Activity className="h-5 w-5 text-orange-500" />
+                    <Rocket className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/launch-planning')}
+                    className="text-xs"
+                  >
+                    Go
+                  </Button>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-3xl font-bold">{loading ? '...' : stats?.launchPlanning.total || 0}</p>
+                  <p className="text-sm text-muted-foreground">Launch Plans</p>
+                  <p className="text-xs text-muted-foreground">
+                    Strategy & Roadmap
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Stats */}
+            <Card className="glass border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-indigo-500/10 rounded-lg">
+                    <Activity className="h-5 w-5 text-indigo-500" />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-3xl font-bold">
-                    {loading ? '...' : (stats?.problemDiscovery.total || 0) + (stats?.ideas.total || 0) + (stats?.competitorAnalysis.total || 0)}
+                    {loading ? '...' : (stats?.problemDiscovery.total || 0) + (stats?.ideas.total || 0) + (stats?.competitorAnalysis.total || 0) + (stats?.launchPlanning.total || 0)}
                   </p>
                   <p className="text-sm text-muted-foreground">Total Actions</p>
                   <p className="text-xs text-muted-foreground">
@@ -330,12 +385,14 @@ export default function Dashboard() {
                         {activity.type === 'problem' && <BarChart3 className="h-4 w-4 text-purple-500" />}
                         {activity.type === 'idea' && <Lightbulb className="h-4 w-4 text-blue-500" />}
                         {activity.type === 'competitor' && <Target className="h-4 w-4 text-green-500" />}
+                        {activity.type === 'launch' && <Rocket className="h-4 w-4 text-orange-500" />}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">
                           {activity.type === 'problem' && 'Problem Discovery'}
                           {activity.type === 'idea' && 'Idea Validation'}
                           {activity.type === 'competitor' && 'Competitor Analysis'}
+                          {activity.type === 'launch' && 'Launch Planning'}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {activity.count} {activity.count === 1 ? 'item' : 'items'} • {formatDate(activity.date)}
@@ -348,6 +405,7 @@ export default function Dashboard() {
                           if (activity.type === 'problem') navigate('/discovered-problems');
                           if (activity.type === 'idea') navigate('/ideas');
                           if (activity.type === 'competitor') navigate('/competitor-analysis/history');
+                          if (activity.type === 'launch') navigate('/launch-planning');
                         }}
                       >
                         <ArrowRight className="h-4 w-4" />
@@ -403,6 +461,18 @@ export default function Dashboard() {
                   My Competitor Analyses
                   <span className="ml-auto text-xs text-muted-foreground">
                     {stats?.competitorAnalysis.total || 0}
+                  </span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start glass border-border/50"
+                  onClick={() => navigate('/launch-planning')}
+                >
+                  <Rocket className="mr-2 h-4 w-4" />
+                  My Launch Plans
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {stats?.launchPlanning.total || 0}
                   </span>
                 </Button>
               </div>

@@ -1289,6 +1289,33 @@ export const api = {
         analysis: any;
       }>(`/pain-points/analysis/${inputId}`),  // ✅ Fixed: removed /api prefix
   },
+
+  // Launch Planning endpoints - NEW
+  launchPlanning: {
+    createPlan: (data: {
+      idea_description: string;
+      target_audience?: string;
+      product_stage: string;
+      estimated_budget: number;
+      team_size: number;
+      target_market?: string;
+      expected_timeline_months: number;
+      problem_discovery_id?: string;
+      validation_id?: string;
+      competitor_analysis_id?: string;
+      user_id?: string;
+    }) =>
+      apiRequest<any>('/launch-planning/plan/create', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getPlan: (planId: string) =>
+      apiRequest<any>(`/launch-planning/plan/${planId}`),
+
+    getHistory: (userId: string) =>
+      apiRequest<any[]>(`/launch-planning/history/${userId}`),
+  },
 };
 
 export { ApiError };

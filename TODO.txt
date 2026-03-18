@@ -8,3 +8,7 @@
 
 Where the are the competitor analysis user inputs being saved? and in the previous competitor analysis, i cant see user inputs with the analysis, aas i can see in the idea validaation, and pain point discovery, show the inputs of that analysis too, interactively, and user inputs must be saved in the db
 and at every step of backend in competitor anlysis, all the data in between all the steps MUST be saved in the data directory in side the backend
+
+
+FYP-2:
+=> 
