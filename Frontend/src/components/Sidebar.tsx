@@ -8,7 +8,7 @@ import {
   Users,
   Target,
   Rocket,
-  TrendingUp,
+  Megaphone,
   X,
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -20,7 +20,7 @@ const navigation = [
   { name: 'Competitor Analysis', href: '/competitor-analysis/new', icon: Target },
   { name: 'Customer Finding', href: '/customer-finding', icon: Users },
   { name: 'Launch Planning', href: '/launch-planning', icon: Rocket },
-  { name: 'Go-to-Market', href: '/go-to-market', icon: TrendingUp },
+  { name: 'Go-to-Market', href: '/go-to-market', icon: Megaphone },
 ];
 
 const Sidebar = () => {

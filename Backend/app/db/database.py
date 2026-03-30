@@ -20,6 +20,9 @@ competitor_analyses_collection = db["competitor_analyses"]
 # Launch Planning Module collections
 launch_plans_collection = db["launch_plans"]
 
+# GTM Strategy Module collections
+gtm_strategies_collection = db["gtm_strategies"]
+
 # User collection indexes
 users_collection.create_index("email", unique=True)
 
@@ -61,3 +64,7 @@ competitor_analyses_collection.create_index([("product_id", 1), ("status", 1)])
 launch_plans_collection.create_index("plan_id", unique=True)
 launch_plans_collection.create_index([("user_id", 1), ("created_at", -1)])
 launch_plans_collection.create_index([("status", 1), ("created_at", 1)])
+
+# GTM strategies collection indexes
+gtm_strategies_collection.create_index("gtm_id", unique=True)
+gtm_strategies_collection.create_index([("user_id", 1), ("created_at", -1)])

@@ -262,3 +262,60 @@ $12/month
 
 Target Audience
 Ecommerce brands, DTC stores, marketing agencies
+
+
+Test Input - competitor analysis
+Product Name
+ClipForge Studio
+
+Description
+ClipForge Studio combines AI scriptwriting, video editing, and auto-captioning for creators needing quick turnaround content for YouTube, TikTok, or Instagram.
+
+Features
+AI script generator
+Auto subtitles
+AI B-roll suggestions
+Music + template library
+One-click vertical/landscape conversion
+Export presets
+Pricing
+$15/month
+
+
+Test Input - competitor analysis
+HireAI Screen
+
+Description
+HireAI Screen is an AI-powered interview assistant that automatically screens job applicants, asks adaptive interview questions, evaluates responses, and ranks candidates based on job-fit. It helps HR teams save time and improve hiring accuracy.
+
+Features
+Automated candidate screening
+AI-generated interview questions
+Voice & video response scoring
+Skills and personality profiling
+ATS integration
+Candidate ranking dashboard
+Pricing
+$49/month per recruiter
+
+
+
+
+A mobile app that helps students find nearby study partners, form study groups, and schedule sessions based on subjects, availability, and goals.
+Idea / Concept
+5000
+1
+6
+
+
+A SaaS platform that helps small e-commerce businesses track customer behavior, predict trends, and optimize marketing campaigns using AI-driven analytics.
+
+Small to medium e-commerce business owners with 1–20 employees who want to improve sales and customer retention.
+
+Affordable and easy-to-use AI analytics tailored for small businesses, providing actionable insights without requiring technical expertise.
+
+SaaS
+
+5000
+
+8

@@ -72,7 +72,18 @@ class LLMInsightsGenerator:
             # Build optimized prompt
             prompt = LLMInsightsGenerator._build_analysis_prompt(product_info, preprocessed_data)
             
-            system_prompt = """You are a brutally honest competitive intelligence analyst. Your job is to give REAL, UNBIASED analysis - not to make the user feel good. If their market is saturated, say so. If they have no unique advantages, say so. Use ONLY the data provided. Be specific and factual. Return valid JSON only."""
+            system_prompt = """You are a brutally honest competitive intelligence analyst specializing in PERSONALIZED, SPECIFIC analysis. 
+
+CRITICAL RULES:
+1. NEVER give generic advice - every insight must be tailored to THIS specific product
+2. ALWAYS mention actual competitor names when making comparisons
+3. ALWAYS reference specific features, prices, and data points from the provided information
+4. BE HONEST - if the market is saturated, say so with specific evidence
+5. BE SPECIFIC - instead of "improve features", say "add Feature X which Competitors Y and Z have"
+6. COMPARE DIRECTLY - "Unlike Competitor A which has X, this product has Y"
+7. NO FLUFF - every sentence must contain actionable, specific information
+
+Return valid JSON only with deeply personalized analysis."""
             
             # Define fallback handler
             def fallback_handler():
@@ -180,50 +191,52 @@ class LLMInsightsGenerator:
             prompt_parts.append("")
         
         prompt_parts.extend([
-            "# CRITICAL INSTRUCTIONS - BE HONEST AND FACTUAL",
+            "# CRITICAL INSTRUCTIONS - PERSONALIZED & SPECIFIC ANALYSIS",
             "",
-            "1. USE ONLY DATA PROVIDED - Do NOT invent competitors, features, or information",
-            "2. BE HONEST - If the market is saturated, say so. If user's product isn't unique, say so.",
-            "3. NO BIAS - Don't make the user feel special if they're not. Give real analysis.",
-            "4. BE SPECIFIC - Use actual competitor names and features from the data above",
-            "5. IF DATA IS LIMITED - Say 'Limited data available' instead of guessing",
-            "6. REAL GAPS ONLY - Only mention opportunities if they're actually missing from competitors",
+            "1. DEEPLY ANALYZE THIS SPECIFIC PRODUCT - Compare '{product_name}' features against EACH competitor listed above",
+            "2. BE BRUTALLY SPECIFIC - Mention actual competitor names, their specific features, and exact comparisons",
+            "3. PERSONALIZE EVERYTHING - Every insight must be tailored to THIS product's unique situation",
+            "4. USE REAL DATA - Reference actual competitors, features, and pricing from the data above",
+            "5. NO GENERIC ADVICE - Avoid phrases like 'focus on innovation' or 'improve user experience'",
+            "6. COMPARE DIRECTLY - Say things like: 'Unlike Competitor X which has Feature Y, your product lacks...'",
+            "7. SPECIFIC GAPS - Identify exact features/capabilities that competitors have but this product doesn't",
+            "8. UNIQUE POSITIONING - What makes THIS product different from THESE specific competitors?",
             "",
             "# REQUIRED ANALYSIS FORMAT",
-            "Return ONLY valid JSON with honest, factual analysis:",
+            f"Return ONLY valid JSON with PERSONALIZED analysis for {product_info.get('name')}:",
             "",
             "{",
-            '    "market_position": "Honest assessment: Is this a saturated market? Are there many competitors? Be specific about the competitive landscape.",',
+            f'    "market_position": "Specific assessment of {product_info.get("name")} in THIS market. Mention: How many direct competitors? Name 2-3 key players. What makes this market unique? Is it saturated or emerging? Be SPECIFIC to this product category.",',
             '    "key_competitors": [',
-            '        {"name": "Actual competitor name from data", "description": "What they actually do", "threat_level": "high/medium/low"}',
+            '        {"name": "Actual competitor name", "description": "What they do and WHY they are a threat to THIS product specifically", "threat_level": "high/medium/low", "key_differentiator": "What makes them different from user\'s product"}',
             '    ],',
-            '    "competitive_advantages": [',
-            '        "ONLY list advantages if user actually has them based on data. If none, return empty array []"',
+            f'    "competitive_advantages": [',
+            f'        "SPECIFIC advantages {product_info.get("name")} has over named competitors. Example: \'Unlike Competitor X which only offers Feature A, {product_info.get("name")} provides Feature B which...\' If no real advantages, return empty array."',
             '    ],',
             '    "competitive_threats": [',
-            '        "Real threats from actual competitors. Be specific about what makes them strong."',
+            f'        "SPECIFIC threats from named competitors. Example: \'Competitor X has 10,000 users and offers Features Y and Z which {product_info.get("name")} lacks.\' Be concrete and name names."',
             '    ],',
             '    "feature_comparison": {',
-            '        "unique_features": ["Features ONLY user has - if none, empty array"],',
-            '        "missing_features": ["Features competitors have but user lacks - be honest"],',
-            '        "common_features": ["Features everyone has"]',
+            f'        "unique_features": ["Features ONLY {product_info.get("name")} has that NO competitor offers. Be specific. If none, empty array."],',
+            f'        "missing_features": ["Features that 2+ competitors have but {product_info.get("name")} lacks. Name which competitors have them."],',
+            '        "common_features": ["Features that both user and most competitors have"]',
             '    },',
             '    "gap_analysis": {',
             '        "opportunities": [',
-            '            "REAL gaps in market based on data. If market is saturated, say: Market appears saturated with established players"',
+            '            "SPECIFIC market gaps based on competitor analysis. Example: \'None of the top 5 competitors (name them) offer Feature X, which could be a differentiation opportunity.\' If market is saturated, say exactly why."',
             '        ],',
-            '        "underserved_segments": ["Only if you see actual gaps in the data"]',
+            '        "underserved_segments": ["Specific user segments that competitors are NOT targeting well. Be concrete about who and why."]',
             '    },',
-            '    "differentiation_strategy": "Honest advice: What would actually make user competitive? If they need major changes, say so.",',
-            '    "pricing_strategy": "Based on actual competitor pricing from data",',
-            '    "target_audience_insights": "Based on actual competitor target audiences",',
+            f'    "differentiation_strategy": "ACTIONABLE strategy for {product_info.get("name")}. Reference specific competitors and features. Example: \'To compete with Competitor X and Y, focus on Feature Z which they lack, and target Segment A which they ignore.\' Be specific and tactical.",',
+            '    "pricing_strategy": "Based on actual competitor pricing listed above. Name specific competitors and their prices. Recommend specific price point with justification.",',
+            '    "target_audience_insights": "Based on actual competitor target audiences from data. Who are competitors targeting? Who is underserved? Be specific about demographics/use cases.",',
             '    "opportunity_score": {',
             '        "score": 1-10,',
-            '        "justification": "Honest score. 1-3 = saturated market, hard to compete. 4-6 = moderate opportunity. 7-10 = good opportunity with clear gaps"',
+            f'        "justification": "Specific justification for {product_info.get("name")}. Reference: number of competitors, their strengths/weaknesses, market gaps, and THIS product\'s positioning. Be detailed and specific."',
             '    }',
             "}",
             "",
-            "REMEMBER: Be honest. Users need real analysis, not feel-good fluff."
+            f"REMEMBER: Every sentence must be SPECIFIC to {product_info.get('name')} and THESE competitors. No generic advice!"
         ])
         
         prompt = '\n'.join(prompt_parts)
@@ -294,12 +307,12 @@ class LLMInsightsGenerator:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a brutally honest competitive intelligence analyst. Your job is to give REAL, UNBIASED analysis - not to make the user feel good. If their market is saturated, say so. If they have no unique advantages, say so. Use ONLY the data provided. Be specific and factual. Return valid JSON only."
+                    "content": "You are a brutally honest competitive intelligence analyst specializing in PERSONALIZED, SPECIFIC analysis. NEVER give generic advice. ALWAYS mention actual competitor names, specific features, and concrete data. Compare directly: 'Unlike Competitor A which has X, this product has Y'. Be honest about market saturation with specific evidence. Return valid JSON only."
                 },
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.1,  # Very low for factual, unbiased responses
-            "max_tokens": 2500
+            "temperature": 0.2,  # Slightly higher for more creative, specific insights
+            "max_tokens": 3000
         }
         
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)
@@ -327,12 +340,12 @@ class LLMInsightsGenerator:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a brutally honest competitive intelligence analyst. Give REAL, UNBIASED analysis based ONLY on provided data. If market is saturated, say so. If user has no advantages, say so. Be specific and factual. Return valid JSON only."
+                    "content": "You are a brutally honest competitive intelligence analyst specializing in PERSONALIZED, SPECIFIC analysis. NEVER give generic advice. ALWAYS mention actual competitor names, specific features, and concrete data. Compare directly: 'Unlike Competitor A which has X, this product has Y'. Be honest about market saturation with specific evidence. Return valid JSON only."
                 },
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.1,  # Very low for factual responses
-            "max_tokens": 3000
+            "temperature": 0.2,  # Slightly higher for more creative, specific insights
+            "max_tokens": 3500
         }
         
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)

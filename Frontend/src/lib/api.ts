@@ -1316,6 +1316,33 @@ export const api = {
     getHistory: (userId: string) =>
       apiRequest<any[]>(`/launch-planning/history/${userId}`),
   },
+
+  // Module 6: Go-to-Market Strategy endpoints
+  gtm: {
+    createStrategy: (data: {
+      startup_description: string;
+      target_audience: string;
+      unique_value_proposition?: string;
+      business_model: string;
+      budget: number;
+      launch_date_weeks: number;
+      problem_discovery_id?: string;
+      validation_id?: string;
+      competitor_analysis_id?: string;
+      launch_plan_id?: string;
+      user_id?: string;
+    }) =>
+      apiRequest<any>('/gtm/strategy/create', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getStrategy: (gtmId: string) =>
+      apiRequest<any>(`/gtm/strategy/${gtmId}`),
+
+    getHistory: (userId: string) =>
+      apiRequest<any[]>(`/gtm/history/${userId}`),
+  },
 };
 
 export { ApiError };
