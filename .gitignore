@@ -8,7 +8,7 @@ lerna-debug.log*
 
 # Root build
 dist/
-build/asca
+build/
 
 # Frontend Build
 Frontend/dist/
