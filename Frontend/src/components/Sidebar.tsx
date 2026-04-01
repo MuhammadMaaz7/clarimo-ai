@@ -14,7 +14,7 @@ import {
 import { Button } from './ui/button';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Problem Discovery', href: '/problem-discovery', icon: Sparkles },
   { name: 'Idea Validation', href: '/ideas/new', icon: Lightbulb },
   { name: 'Competitor Analysis', href: '/competitor-analysis/new', icon: Target },

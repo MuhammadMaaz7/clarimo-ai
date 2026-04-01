@@ -36,6 +36,9 @@ from app.api.launch_planning.routes_plan import router as launch_plan_router
 # Module 6: Go-to-Market Strategy routes
 from app.api.gtm.routes_gtm import router as gtm_router
 
+# Chatbot System routes
+from app.api.chat.routes_chat import router as chat_router
+
 app = FastAPI(title="Clarimo AI API")
 
 app.add_middleware(
@@ -66,6 +69,7 @@ app.include_router(analyses_router, prefix="/api")
 app.include_router(production_router, prefix="/api")  # Production-ready competitor analysis
 app.include_router(launch_plan_router, prefix="/api")
 app.include_router(gtm_router, prefix="/api")
+app.include_router(chat_router, prefix="/api")
 
 @app.get("/")
 async def root():

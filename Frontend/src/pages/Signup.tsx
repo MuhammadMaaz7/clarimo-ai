@@ -7,7 +7,9 @@ import { Label } from '../components/ui/label';
 import { unifiedToast } from '../lib/toast-utils';
 import { z } from 'zod';
 import { Checkbox } from '../components/ui/checkbox';
-import { Lightbulb, Target, Users, ArrowRight } from 'lucide-react';
+import { ArrowRight, UserPlus } from 'lucide-react';
+import PageTransition from '../components/PageTransition';
+import { motion } from 'framer-motion';
 
 const signupSchema = z.object({
   fullName: z.string().trim().min(2, { message: 'Name must be at least 2 characters' }).max(100, { message: 'Name must be less than 100 characters' }),
@@ -48,7 +50,7 @@ const Signup = () => {
       unifiedToast.success({
         description: 'Your account has been created successfully.',
       });
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       if (error instanceof z.ZodError) {
         unifiedToast.error({
@@ -66,302 +68,130 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen relative bg-gradient-to-br from-accent/20 via-primary/10 to-background overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,hsl(var(--accent))_0%,transparent_50%)] opacity-20" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,hsl(var(--primary))_0%,transparent_50%)] opacity-20" />
+    <PageTransition>
+      <div className="min-h-screen w-full relative flex items-center justify-center bg-[#050508] overflow-hidden selection:bg-accent/30">
+        
+        {/* Animated Background Effect */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(ellipse_at_center,hsl(var(--accent)/0.15),transparent_50%)] animate-pulse-slow pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.14] pointer-events-none mix-blend-overlay"></div>
 
-      {/* Desktop Layout */}
-      <div className="hidden lg:flex min-h-screen">
-        {/* Left Side - Branding */}
-        <div className="relative w-1/2 flex items-center justify-center p-12 xl:p-16">
-          <div className="relative z-10 max-w-lg space-y-8 text-left">
-            <div className="space-y-6">
-              <div className="flex items-center space-x-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden glow-sm">
-                  <img src="/logo.png" alt="Clarimo AI" className="h-full w-full object-cover" />
-                </div>
-                <h1 className="text-3xl font-bold gradient-text">Clarimo AI</h1>
-              </div>
-              <h2 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight">
-                Start Your
-                <br />
-                <span className="gradient-text">Startup Journey</span>
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Join thousands of entrepreneurs turning ideas into successful ventures
-              </p>
+        {/* Absolute Header link to go back */}
+        <Link to="/" className="absolute top-8 left-8 z-50 flex items-center gap-2 group p-2 hover:bg-white/5 rounded-lg transition-colors">
+          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors rotate-180" />
+          <span className="text-sm font-medium text-muted-foreground group-hover:text-white transition-colors">Back to Home</span>
+        </Link>
+        
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-md p-8 md:p-10 z-10 mx-4 glass border-white/10 rounded-[2rem] shadow-2xl bg-black/40 backdrop-blur-2xl"
+        >
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-accent to-primary flex items-center justify-center mb-6 shadow-[0_0_30px_-5px_hsl(var(--accent))]">
+              <UserPlus className="w-6 h-6 text-white" />
             </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="flex items-start space-x-3 glass p-4 rounded-lg">
-                <Target className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-foreground">Problem Discovery</h3>
-                  <p className="text-sm text-muted-foreground">Identify real problems worth solving</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 glass p-4 rounded-lg">
-                <Lightbulb className="h-5 w-5 text-accent mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-foreground">AI Validation</h3>
-                  <p className="text-sm text-muted-foreground">Get instant feedback on your ideas</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 glass p-4 rounded-lg">
-                <Users className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-foreground">Community Support</h3>
-                  <p className="text-sm text-muted-foreground">Connect with fellow entrepreneurs</p>
-                </div>
-              </div>
-            </div>
+            <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">Create Account</h1>
+            <p className="text-sm text-muted-foreground text-center">
+              Join elite founders turning concepts into robust market reality.
+            </p>
           </div>
-        </div>
 
-        {/* Right Side - Form */}
-        <div className="w-1/2 bg-background/95 backdrop-blur-sm flex items-center justify-center p-12 xl:p-16">
-          <div className="w-full max-w-md space-y-6">
-            <div className="space-y-2 text-center">
-              <h2 className="text-3xl font-bold text-foreground">Create Account</h2>
-              <p className="text-muted-foreground">
-                Already have an account?{' '}
-                <Link to="/login" className="text-primary hover:text-accent transition-colors font-medium">
-                  Log in
-                </Link>
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="abcd"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    className="bg-input border-border h-11 focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="bg-input border-border h-11 focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-foreground">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="bg-input border-border h-11 focus:border-primary transition-colors"
-                  />
-                  <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-foreground">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="bg-input border-border h-11 focus:border-primary transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={termsAccepted}
-                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  I agree to the{' '}
-                  <span className="text-primary hover:underline cursor-pointer">
-                    Terms & Conditions
-                  </span>
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full gradient-primary hover:opacity-90 transition-opacity h-11 text-base font-medium glow-sm"
-                disabled={loading}
-              >
-                {loading ? 'Creating account...' : 'Create Account'}
-                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </form>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Secure Registration
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile/Tablet Layout */}
-      <div className="lg:hidden min-h-screen flex flex-col items-center justify-center p-6 sm:p-8">
-        <div className="relative z-10 w-full max-w-md space-y-8">
-          {/* Mobile Header */}
-          <div className="text-center space-y-6">
-            <div className="flex items-center justify-center space-x-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden glow-sm">
-                <img src="/logo.png" alt="Clarimo AI" className="h-full w-full object-cover" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold gradient-text">Clarimo AI</h1>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-                Start Your{' '}
-                <span className="gradient-text">Startup Journey</span>
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Join thousands of entrepreneurs turning ideas into ventures
-              </p>
-            </div>
-          </div>
-
-          {/* Mobile Form */}
-          <div className="glass p-6 sm:p-8 rounded-2xl border border-border/50 glow-sm">
-            <div className="space-y-6">
-              <div className="space-y-2 text-center">
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Create Account</h3>
-                <p className="text-sm text-muted-foreground">
-                  Already have an account?{' '}
-                  <Link to="/login" className="text-primary hover:text-accent transition-colors font-medium">
-                    Log in
-                  </Link>
-                </p>
+              <div className="space-y-1.5">
+                 <Label htmlFor="fullName" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Full Name</Label>
+                 <Input
+                   id="fullName"
+                   type="text"
+                   placeholder="Steve Jobs"
+                   value={fullName}
+                   onChange={(e) => setFullName(e.target.value)}
+                   required
+                   className="bg-white/5 border-white/10 h-11 rounded-xl focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all px-4 placeholder:text-muted-foreground/50 text-white"
+                 />
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName-mobile" className="text-foreground">Full Name</Label>
-                    <Input
-                      id="fullName-mobile"
-                      type="text"
-                      placeholder="abcd"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                      className="bg-input border-border h-11 focus:border-primary transition-colors"
-                    />
-                  </div>
+              <div className="space-y-1.5">
+                 <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Email</Label>
+                 <Input
+                   id="email"
+                   type="email"
+                   placeholder="founder@startup.com"
+                   value={email}
+                   onChange={(e) => setEmail(e.target.value)}
+                   required
+                   className="bg-white/5 border-white/10 h-11 rounded-xl focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all px-4 placeholder:text-muted-foreground/50 text-white"
+                 />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email-mobile" className="text-foreground">Email</Label>
-                    <Input
-                      id="email-mobile"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="bg-input border-border h-11 focus:border-primary transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="password-mobile" className="text-foreground">Password</Label>
-                    <Input
-                      id="password-mobile"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="bg-input border-border h-11 focus:border-primary transition-colors"
-                    />
-                    <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword-mobile" className="text-foreground">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword-mobile"
-                      type="password"
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      className="bg-input border-border h-11 focus:border-primary transition-colors"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                   <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Password</Label>
+                   <Input
+                     id="password"
+                     type="password"
+                     placeholder="••••••••"
+                     value={password}
+                     onChange={(e) => setPassword(e.target.value)}
+                     required
+                     className="bg-white/5 border-white/10 h-11 rounded-xl focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all px-4 placeholder:text-muted-foreground/50 text-white tracking-widest"
+                   />
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="terms-mobile"
-                    checked={termsAccepted}
-                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                  />
-                  <label
-                    htmlFor="terms-mobile"
-                    className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I agree to the{' '}
-                    <span className="text-primary hover:underline cursor-pointer">
-                      Terms & Conditions
-                    </span>
-                  </label>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full gradient-primary hover:opacity-90 transition-opacity h-11 text-base font-medium glow-sm"
-                  disabled={loading}
-                >
-                  {loading ? 'Creating account...' : 'Create Account'}
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-                </Button>
-              </form>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Secure Registration
-                  </span>
+                
+                <div className="space-y-1.5">
+                   <Label htmlFor="confirmPassword" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Confirm</Label>
+                   <Input
+                     id="confirmPassword"
+                     type="password"
+                     placeholder="••••••••"
+                     value={confirmPassword}
+                     onChange={(e) => setConfirmPassword(e.target.value)}
+                     required
+                     className="bg-white/5 border-white/10 h-11 rounded-xl focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all px-4 placeholder:text-muted-foreground/50 text-white tracking-widest"
+                   />
                 </div>
               </div>
             </div>
+
+            <div className="flex items-center space-x-2 pt-2 pb-1">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                className="border-white/20 data-[state=checked]:bg-accent"
+              />
+              <label
+                htmlFor="terms"
+                className="text-xs text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                I agree to the{' '}
+                <span className="text-white hover:text-accent font-medium cursor-pointer transition-colors">
+                  Terms & Conditions
+                </span>
+              </label>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-white hover:bg-white/90 text-black h-12 text-base font-semibold rounded-xl shadow-[0_0_20px_-5px_rgba(255,255,255,0.4)] transition-all active:scale-[0.98] mt-2 disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? 'Accelerating...' : 'Join Platform'}
+            </Button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Already a user?{' '}
+              <Link to="/login" className="text-white hover:text-accent transition-colors font-semibold">
+                Sign in
+              </Link>
+            </p>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

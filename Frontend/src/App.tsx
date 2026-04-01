@@ -3,7 +3,8 @@ import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AnalysisProvider } from "./contexts/AnalysisContext";
@@ -20,8 +21,10 @@ import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
 import LoadingSpinner from "./components/LoadingSpinner";
 import { useTokenValidation } from "./hooks/useTokenValidation";
+import ChatbotWidget from "./components/chatbot/ChatbotWidget";
 
 // Lazy load heavy components for better performance
+const Landing = lazy(() => import("./pages/Landing"));
 const AnalysisView = lazy(() => import("./pages/AnalysisView"));
 const DiscoveredProblems = lazy(() => import("./pages/DiscoveredProblems"));
 const IdeaList = lazy(() => import("./pages/IdeaList"));
@@ -44,6 +47,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   // Enable periodic token validation (every 5 minutes)
   useTokenValidation(5);
@@ -56,11 +60,21 @@ const AppContent = () => {
     );
   }
 
+  const getRootKey = (pathname: string) => {
+    if (['/', '/login', '/signup'].includes(pathname)) return pathname;
+    return 'dashboard-app'; // Groups all dashboard routes together so Navbar/Sidebar don't remount
+  };
+
   return (
-    <Routes>
+    <>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={getRootKey(location.pathname)}>
       {/* Authentication routes - full screen without navbar */}
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
+      
+      {/* Landing route - full screen without navbar */}
+      <Route path="/" element={<Landing />} />
       
       {/* Main app routes - with navbar and sidebar */}
       <Route path="/*" element={
@@ -81,7 +95,7 @@ const AppContent = () => {
                     </div>
                   }>
                     <Routes>
-                      <Route path="/" element={
+                      <Route path="/dashboard" element={
                         <ProtectedRoute>
                           <Dashboard />
                         </ProtectedRoute>
@@ -190,7 +204,10 @@ const AppContent = () => {
           </div>
         </SidebarProvider>
       } />
-    </Routes>
+      </Routes>
+    </AnimatePresence>
+    <ChatbotWidget />
+    </>
   );
 };
 

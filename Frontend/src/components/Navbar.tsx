@@ -1,8 +1,8 @@
-import { Menu, LogOut, User, Lightbulb, CheckCircle } from 'lucide-react';
+import { Menu, LogOut, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,23 +11,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { cn } from '../lib/utils';
 
 
 const Navbar = () => {
   const { toggleSidebar } = useSidebar();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const isActive = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(path + '/');
-  };
 
   return (
     <nav className="sticky top-0 z-40 w-full border-b border-border/50 glass bg-white/5 backdrop-blur-xl">
@@ -45,7 +41,7 @@ const Navbar = () => {
         
         <button 
           className="flex items-center space-x-2 lg:space-x-3 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-lg p-1"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
           aria-label="Go to home page"
         >
           <div className="flex h-9 w-9 lg:h-11 lg:w-11 items-center justify-center rounded-xl overflow-hidden glow-sm">
