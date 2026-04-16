@@ -6,6 +6,7 @@ import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Lightbulb, AlertCircle, Loader2 } from 'lucide-react';
 import { IdeaFormData } from '../types/validation';
+import { cn } from '../lib/utils';
 
 interface IdeaSubmissionFormProps {
   onSubmit: (data: IdeaFormData) => Promise<void>;
@@ -112,7 +113,7 @@ export default function IdeaSubmissionForm({
   };
 
   return (
-    <Card className="glass border-border/50">
+    <Card className="bg-[#2d2048]/30 border-[#442754]/60 shadow-xl rounded-3xl overflow-hidden">
       {isEdit && (
         <CardHeader>
           <CardTitle className="text-xl">Edit Idea</CardTitle>
@@ -121,21 +122,22 @@ export default function IdeaSubmissionForm({
           </CardDescription>
         </CardHeader>
       )}
-      <CardContent className={isEdit ? '' : 'pt-6'}>
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <CardContent className={isEdit ? '' : 'pt-5'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-base">
+            <label htmlFor="title" className="brand-label">
               Idea Title *
-            </Label>
+            </label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
               placeholder="e.g., AI-Powered Customer Support Platform"
-              className={`glass border-border/50 focus:border-primary transition-all duration-300 ${
+              className={cn(
+                "brand-input",
                 getFieldError('title') ? 'border-red-500' : ''
-              }`}
+              )}
               maxLength={200}
               required
             />
@@ -152,17 +154,18 @@ export default function IdeaSubmissionForm({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-base">
+            <label htmlFor="description" className="brand-label">
               Idea Description *
-            </Label>
+            </label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               placeholder="Provide a comprehensive description of your startup idea, including what it does and who it serves..."
-              className={`min-h-[120px] resize-none glass border-border/50 focus:border-primary transition-all duration-300 ${
+              className={cn(
+                "brand-textarea min-h-[100px]",
                 getFieldError('description') ? 'border-red-500' : ''
-              }`}
+              )}
               required
             />
             {getFieldError('description') && (
@@ -178,17 +181,18 @@ export default function IdeaSubmissionForm({
 
           {/* Problem Statement */}
           <div className="space-y-2">
-            <Label htmlFor="problemStatement" className="text-base">
+            <label htmlFor="problemStatement" className="brand-label">
               Problem Statement *
-            </Label>
+            </label>
             <Textarea
               id="problemStatement"
               value={formData.problemStatement}
               onChange={(e) => handleChange('problemStatement', e.target.value)}
               placeholder="Clearly define the problem your idea solves. Be specific about user pain points..."
-              className={`min-h-[100px] resize-none glass border-border/50 focus:border-primary transition-all duration-300 ${
+              className={cn(
+                "brand-textarea min-h-[80px]",
                 getFieldError('problemStatement') ? 'border-red-500' : ''
-              }`}
+              )}
               required
             />
             {getFieldError('problemStatement') && (
@@ -204,17 +208,18 @@ export default function IdeaSubmissionForm({
 
           {/* Solution Description */}
           <div className="space-y-2">
-            <Label htmlFor="solutionDescription" className="text-base">
+            <label htmlFor="solutionDescription" className="brand-label">
               Solution Description *
-            </Label>
+            </label>
             <Textarea
               id="solutionDescription"
               value={formData.solutionDescription}
               onChange={(e) => handleChange('solutionDescription', e.target.value)}
               placeholder="Describe your proposed solution and how it addresses the problem..."
-              className={`min-h-[100px] resize-none glass border-border/50 focus:border-primary transition-all duration-300 ${
+              className={cn(
+                "brand-textarea min-h-[80px]",
                 getFieldError('solutionDescription') ? 'border-red-500' : ''
-              }`}
+              )}
               required
             />
             {getFieldError('solutionDescription') && (
@@ -230,17 +235,18 @@ export default function IdeaSubmissionForm({
 
           {/* Target Market */}
           <div className="space-y-2">
-            <Label htmlFor="targetMarket" className="text-base">
+            <label htmlFor="targetMarket" className="brand-label">
               Target Market *
-            </Label>
+            </label>
             <Input
               id="targetMarket"
               value={formData.targetMarket}
               onChange={(e) => handleChange('targetMarket', e.target.value)}
-              placeholder="e.g., Small to medium-sized e-commerce businesses in North America"
-              className={`glass border-border/50 focus:border-primary transition-all duration-300 ${
+              placeholder="e.g., Small to medium-sized e-commerce businesses"
+              className={cn(
+                "brand-input",
                 getFieldError('targetMarket') ? 'border-red-500' : ''
-              }`}
+              )}
               required
             />
             {getFieldError('targetMarket') && (
@@ -255,20 +261,20 @@ export default function IdeaSubmissionForm({
           </div>
 
           {/* Optional Fields Section */}
-          <div className="space-y-4 pt-4 border-t border-border/50">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-4 pt-5 border-t border-white/5">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-200/30">
               Optional Information
             </h3>
 
             {/* Business Model */}
             <div className="space-y-2">
-              <Label htmlFor="businessModel">Business Model (Optional)</Label>
+              <label htmlFor="businessModel" className="brand-label">Business Model (Optional)</label>
               <Textarea
                 id="businessModel"
                 value={formData.businessModel}
                 onChange={(e) => handleChange('businessModel', e.target.value)}
-                placeholder="Describe your revenue model (e.g., SaaS subscription, freemium, marketplace commission)..."
-                className="min-h-[80px] resize-none glass border-border/50 focus:border-primary transition-all duration-300"
+                placeholder="Describe your revenue model..."
+                className="brand-textarea min-h-[80px]"
               />
               <p className="text-xs text-muted-foreground">
                 How you plan to generate revenue
@@ -277,13 +283,13 @@ export default function IdeaSubmissionForm({
 
             {/* Team Capabilities */}
             <div className="space-y-2">
-              <Label htmlFor="teamCapabilities">Team Capabilities (Optional)</Label>
+              <label htmlFor="teamCapabilities" className="brand-label">Team Capabilities (Optional)</label>
               <Textarea
                 id="teamCapabilities"
                 value={formData.teamCapabilities}
                 onChange={(e) => handleChange('teamCapabilities', e.target.value)}
-                placeholder="Describe your team's skills and experience (e.g., 10 years in SaaS, expertise in AI/ML, strong sales background)..."
-                className="min-h-[80px] resize-none glass border-border/50 focus:border-primary transition-all duration-300"
+                placeholder="Describe your team's skills and experience..."
+                className="brand-textarea min-h-[80px]"
               />
               <p className="text-xs text-muted-foreground">
                 Your team's relevant skills and experience

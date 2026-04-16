@@ -46,6 +46,10 @@ export const unifiedToast = {
     });
   },
 
+  dismiss: (id?: string | number) => {
+    sonnerToast.dismiss(id);
+  },
+
   promise: <T,>(
     promise: Promise<T>,
     {

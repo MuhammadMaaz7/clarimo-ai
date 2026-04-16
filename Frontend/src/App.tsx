@@ -23,7 +23,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import { useTokenValidation } from "./hooks/useTokenValidation";
 import ChatbotWidget from "./components/chatbot/ChatbotWidget";
 
-// Lazy load heavy components for better performance
+// Lazy load heavy components
 const Landing = lazy(() => import("./pages/Landing"));
 const AnalysisView = lazy(() => import("./pages/AnalysisView"));
 const DiscoveredProblems = lazy(() => import("./pages/DiscoveredProblems"));
@@ -35,7 +35,6 @@ const IdeaValidationHistory = lazy(() => import("./pages/IdeaValidationHistory")
 const IdeaVersionComparison = lazy(() => import("./pages/IdeaVersionComparison"));
 const IdeaComparison = lazy(() => import("./pages/IdeaComparison"));
 const CompetitorAnalysis = lazy(() => import("./pages/CompetitorAnalysis"));
-const CompetitorAnalysisNew = lazy(() => import("./pages/CompetitorAnalysisNew")); // Production-ready
 const CompetitorAnalysisHistory = lazy(() => import("./pages/CompetitorAnalysisHistory"));
 const CompetitorAnalysisDetail = lazy(() => import("./pages/CompetitorAnalysisDetail"));
 const LaunchPlanning = lazy(() => import("./pages/LaunchPlanning"));
@@ -43,13 +42,35 @@ const GoToMarket = lazy(() => import("./pages/GoToMarket"));
 
 const queryClient = new QueryClient();
 
-
+const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  
+  return (
+    <div className="h-screen flex flex-col bg-[#211c37] overflow-hidden relative">
+      {/* Unified Background Gradient */}
+      <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-primary/5 to-transparent pointer-events-none" />
+      
+      {/* Background Mesh/Glow Effects */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/20 blur-[120px] rounded-full opacity-20" />
+         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full opacity-20" />
+      </div>
+      
+      <Navbar />
+      <div className="flex flex-1 overflow-hidden relative z-10">
+        {user && <Sidebar />}
+        <main className="flex-1 min-w-0 overflow-y-auto transition-all duration-300 scroll-smooth">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+};
 
 const AppContent = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
   
-  // Enable periodic token validation (every 5 minutes)
   useTokenValidation(5);
 
   if (loading) {
@@ -62,151 +83,55 @@ const AppContent = () => {
 
   const getRootKey = (pathname: string) => {
     if (['/', '/login', '/signup'].includes(pathname)) return pathname;
-    return 'dashboard-app'; // Groups all dashboard routes together so Navbar/Sidebar don't remount
+    return 'dashboard-app'; 
   };
 
   return (
     <>
       <AnimatePresence mode="wait">
         <Routes location={location} key={getRootKey(location.pathname)}>
-      {/* Authentication routes - full screen without navbar */}
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
-      
-      {/* Landing route - full screen without navbar */}
-      <Route path="/" element={<Landing />} />
-      
-      {/* Main app routes - with navbar and sidebar */}
-      <Route path="/*" element={
-        <SidebarProvider>
-          <div className="min-h-screen bg-gradient-to-br from-accent/20 via-primary/10 to-background relative">
-            {/* Background Effects */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,hsl(var(--accent))_0%,transparent_50%)] opacity-20" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,hsl(var(--primary))_0%,transparent_50%)] opacity-20" />
-            
-            <Navbar />
-            <div className="flex min-h-[calc(100vh-4rem)] relative z-10">
-              {user && <Sidebar />}
-              <main className={`flex-1 ${user ? 'lg:ml-4' : ''}`}>
-                <div className="responsive-container min-h-[calc(100vh-4rem)]">
-                  <Suspense fallback={
-                    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-                      <LoadingSpinner />
-                    </div>
-                  }>
-                    <Routes>
-                      <Route path="/dashboard" element={
-                        <ProtectedRoute>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/problem-discovery" element={
-                        <ProtectedRoute>
-                          <ProblemDiscovery />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/profile" element={
-                        <ProtectedRoute>
-                          <Profile />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/analysis/:inputId" element={
-                        <ProtectedRoute>
-                          <AnalysisView />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/discovered-problems" element={
-                        <ProtectedRoute>
-                          <DiscoveredProblems />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas" element={
-                        <ProtectedRoute>
-                          <IdeaList />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/new" element={
-                        <ProtectedRoute>
-                          <IdeaNew />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/compare" element={
-                        <ProtectedRoute>
-                          <IdeaComparison />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/:ideaId" element={
-                        <ProtectedRoute>
-                          <IdeaDetail />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/:ideaId/validate" element={
-                        <ProtectedRoute>
-                          <IdeaValidation />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/:ideaId/history" element={
-                        <ProtectedRoute>
-                          <IdeaValidationHistory />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/ideas/:ideaId/history/compare" element={
-                        <ProtectedRoute>
-                          <IdeaVersionComparison />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/idea-validation" element={
-                        <ProtectedRoute>
-                          <IdeaList />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/competitor-analysis" element={
-                        <ProtectedRoute>
-                          <CompetitorAnalysis />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/competitor-analysis/new" element={
-                        <ProtectedRoute>
-                          <CompetitorAnalysisNew />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/competitor-analysis/history" element={
-                        <ProtectedRoute>
-                          <CompetitorAnalysisHistory />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/competitor-analysis/:productId" element={
-                        <ProtectedRoute>
-                          <CompetitorAnalysisDetail />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/customer-finding" element={
-                        <ProtectedRoute>
-                          <ComingSoon />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/launch-planning" element={
-                        <ProtectedRoute>
-                          <LaunchPlanning />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/go-to-market" element={
-                        <ProtectedRoute>
-                          <GoToMarket />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="*" element={<ComingSoon />} />
-                    </Routes>
-                  </Suspense>
-                </div>
-              </main>
-            </div>
-          </div>
-        </SidebarProvider>
-      } />
-      </Routes>
-    </AnimatePresence>
-    <ChatbotWidget />
+          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+          <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
+          <Route path="/" element={<Landing />} />
+          
+          <Route path="/*" element={
+            <SidebarProvider>
+              <AuthenticatedLayout>
+                <Suspense fallback={
+                  <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+                    <LoadingSpinner />
+                  </div>
+                }>
+                  <Routes>
+                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/problem-discovery" element={<ProtectedRoute><ProblemDiscovery /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    <Route path="/analysis/:inputId" element={<ProtectedRoute><AnalysisView /></ProtectedRoute>} />
+                    <Route path="/discovered-problems" element={<ProtectedRoute><DiscoveredProblems /></ProtectedRoute>} />
+                    <Route path="/ideas" element={<ProtectedRoute><IdeaList /></ProtectedRoute>} />
+                    <Route path="/ideas/new" element={<ProtectedRoute><IdeaNew /></ProtectedRoute>} />
+                    <Route path="/ideas/compare" element={<ProtectedRoute><IdeaComparison /></ProtectedRoute>} />
+                    <Route path="/ideas/:ideaId" element={<ProtectedRoute><IdeaDetail /></ProtectedRoute>} />
+                    <Route path="/ideas/:ideaId/validate" element={<ProtectedRoute><IdeaValidation /></ProtectedRoute>} />
+                    <Route path="/ideas/:ideaId/history" element={<ProtectedRoute><IdeaValidationHistory /></ProtectedRoute>} />
+                    <Route path="/ideas/:ideaId/history/compare" element={<ProtectedRoute><IdeaVersionComparison /></ProtectedRoute>} />
+                    <Route path="/idea-validation" element={<ProtectedRoute><IdeaList /></ProtectedRoute>} />
+                    <Route path="/competitor-analysis" element={<ProtectedRoute><CompetitorAnalysis /></ProtectedRoute>} />
+                    <Route path="/competitor-analysis/history" element={<ProtectedRoute><CompetitorAnalysisHistory /></ProtectedRoute>} />
+                    <Route path="/competitor-analysis/history" element={<ProtectedRoute><CompetitorAnalysisHistory /></ProtectedRoute>} />
+                    <Route path="/competitor-analysis/:productId" element={<ProtectedRoute><CompetitorAnalysisDetail /></ProtectedRoute>} />
+                    <Route path="/customer-finding" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
+                    <Route path="/launch-planning" element={<ProtectedRoute><LaunchPlanning /></ProtectedRoute>} />
+                    <Route path="/go-to-market" element={<ProtectedRoute><GoToMarket /></ProtectedRoute>} />
+                    <Route path="*" element={<ComingSoon />} />
+                  </Routes>
+                </Suspense>
+              </AuthenticatedLayout>
+            </SidebarProvider>
+          } />
+        </Routes>
+      </AnimatePresence>
+      <ChatbotWidget />
     </>
   );
 };

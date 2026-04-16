@@ -3,6 +3,9 @@ import { useValidation } from '../contexts/ValidationContext';
 import { IdeaFormData } from '../types/validation';
 import { useNavigate } from 'react-router-dom';
 
+import { ModuleHeader } from '../components/ui/ModuleHeader';
+import { Lightbulb } from 'lucide-react';
+
 export default function IdeaNew() {
   const navigate = useNavigate();
   const { createIdea, ideasLoading } = useValidation();
@@ -17,18 +20,17 @@ export default function IdeaNew() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2 mb-8">
-          <h1 className="text-3xl font-bold">Submit Your Idea</h1>
-          <p className="text-muted-foreground">
-            Provide details about your startup idea for comprehensive validation
-          </p>
-        </div>
+    <div className="responsive-container-dashboard">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <ModuleHeader
+          icon={Lightbulb}
+          title="Submit Your Idea"
+          description="Provide details about your startup idea for comprehensive validation and architectural mapping."
+        />
 
-        {/* Form */}
-        <IdeaSubmissionForm onSubmit={handleSubmit} isLoading={ideasLoading} />
+        <div className="w-full">
+          <IdeaSubmissionForm onSubmit={handleSubmit} isLoading={ideasLoading} />
+        </div>
       </div>
     </div>
   );

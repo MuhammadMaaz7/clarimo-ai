@@ -1,240 +1,165 @@
 /**
  * IdeaValidation Page
- * 
- * Shows validation progress and results for an idea.
- * Displays real-time progress during validation and the report when complete.
- * 
- * Requirements: 11.1, 13.1
+ * Production-ready with Premium UI and decoupled logic
  */
 
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-
-import { useValidation } from '../contexts/ValidationContext';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useIdeaValidation } from '../hooks/useIdeaValidation';
 import { ValidationProgress } from '../components/ValidationProgress';
 import ValidationReportView from '../components/ValidationReportView';
-import { UnifiedLoadingSpinner } from '../components/shared';
-import { unifiedToast } from '../lib/toast-utils';
+import { PremiumCard } from '../components/ui/premium/PremiumCard';
+import { PremiumButton } from '../components/ui/premium/PremiumButton';
+import { Target, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ModuleHeader } from '../components/ui/ModuleHeader';
 
 export default function IdeaValidation() {
   const { ideaId } = useParams<{ ideaId: string }>();
   const navigate = useNavigate();
   const {
-    currentIdea,
-    currentValidation,
-    currentReport,
-    fetchIdeaById,
-    ideasLoading,
+    idea,
+    validation,
+    status,
+    loading,
+    isActionRunning,
     startValidation,
-    clearCurrentValidation,
-    exportToJson,
-    exportToPdf,
-    fetchValidationResult,
-  } = useValidation();
+    exportReport
+  } = useIdeaValidation(ideaId);
 
-  const [showProgress, setShowProgress] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-
-  useEffect(() => {
-    if (ideaId) {
-      fetchIdeaById(ideaId);
-    }
-  }, [ideaId, fetchIdeaById]);
-
-  // Fetch validation result if idea has a latest validation
-  useEffect(() => {
-    if (currentIdea?.latest_validation?.validation_id) {
-      console.log('Fetching validation result:', currentIdea.latest_validation.validation_id);
-      fetchValidationResult(currentIdea.latest_validation.validation_id);
-    }
-  }, [currentIdea?.latest_validation?.validation_id, fetchValidationResult]);
-
-  useEffect(() => {
-    // If there's no validation in progress, check if we should show results
-    if (currentValidation) {
-      if (currentValidation.status === 'completed') {
-        setShowProgress(false);
-      } else if (currentValidation.status === 'failed') {
-        setShowProgress(false);
-      }
-    }
-  }, [currentValidation]);
-
-  const handleValidationComplete = () => {
-    unifiedToast.success({
-      description: 'Your validation report is ready to view.',
-    });
-    setShowProgress(false);
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
   };
 
-  const handleValidationError = (error: string) => {
-    unifiedToast.error({
-      title: 'Validation Failed',
-      description: error,
-    });
-    setShowProgress(false);
-  };
-
-  const handleRetry = async () => {
-    if (!ideaId) return;
-    
-    try {
-      clearCurrentValidation();
-      setShowProgress(true);
-      await startValidation(ideaId);
-      
-      unifiedToast.success({
-        description: 'Starting a new validation for your idea.',
-      });
-    } catch (error: any) {
-      unifiedToast.error({
-        title: 'Failed to Restart Validation',
-        description: error.message || 'Please try again later.',
-      });
-    }
-  };
-
-  const handleExportJson = async () => {
-    if (!currentValidation?.validation_id) return;
-    
-    setIsExporting(true);
-    try {
-      const data = await exportToJson(currentValidation.validation_id);
-      
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `validation-${currentValidation.validation_id}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      unifiedToast.success({
-        description: 'Validation report exported as JSON.',
-      });
-    } catch (error: any) {
-      unifiedToast.error({
-        description: error.message || 'Failed to export report.',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportPdf = async () => {
-    if (!currentValidation?.validation_id) return;
-    
-    setIsExporting(true);
-    try {
-      const blob = await exportToPdf(currentValidation.validation_id);
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `validation-${currentValidation.validation_id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      unifiedToast.success({
-        description: 'Validation report exported as PDF.',
-      });
-    } catch (error: any) {
-      unifiedToast.error({
-        description: error.message || 'Failed to export report.',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleShare = () => {
-    unifiedToast.info({
-      title: 'Coming Soon',
-      description: 'Share functionality will be available in the next update.',
-    });
-  };
-
-  if (ideasLoading) {
+  if (loading && !validation) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="glass border-border/50">
-          <CardContent className="pt-6">
-            <UnifiedLoadingSpinner text="Loading validation..." />
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center min-h-[60vh]">
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="rounded-full h-12 w-12 border-t-2 border-primary mb-6"
+        />
+        <p className="text-muted-foreground animate-pulse font-bold tracking-widest uppercase text-xs">Synchronizing Intel...</p>
       </div>
     );
   }
 
-  if (!currentIdea) {
+  if (!idea) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="glass border-border/50">
-          <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Idea not found</p>
-              <Button onClick={() => navigate('/ideas')} className="mt-4">
-                Back to Ideas
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-20 max-w-xl">
+        <PremiumCard variant="default" className="text-center space-y-6">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold">Concept Not Found</h2>
+            <p className="text-muted-foreground">The specified idea does not exist or has been archived.</p>
+          </div>
+          <PremiumButton variant="outlined" onClick={() => navigate('/ideas')} className="w-full">
+             <ArrowLeft className="mr-2 h-4 w-4" />
+             Back to Pipeline
+          </PremiumButton>
+        </PremiumCard>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-6">
-        {/* Validation Progress or Results */}
-        {showProgress && currentValidation && currentValidation.status !== 'completed' ? (
-          <ValidationProgress
-            validationId={currentValidation.validation_id}
-            ideaTitle={currentIdea.title}
-            onComplete={handleValidationComplete}
-            onError={handleValidationError}
-            onRetry={handleRetry}
-          />
-        ) : currentReport && currentValidation?.status === 'completed' ? (
-          <ValidationReportView
-            report={currentReport}
-            onExportJson={handleExportJson}
-            onExportPdf={handleExportPdf}
-            onShare={handleShare}
-            isExporting={isExporting}
-          />
-        ) : (
-          <Card className="glass border-border/50">
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  {currentValidation?.status === 'failed'
-                    ? 'Validation failed. Please try again.'
-                    : 'No validation results available.'}
-                </p>
-                <div className="flex gap-4 justify-center">
-                  <Button onClick={() => navigate(`/ideas/${ideaId}`)}>
-                    Back to Idea
-                  </Button>
-                  {currentValidation?.status === 'failed' && (
-                    <Button
-                      variant="outline"
-                      onClick={handleRetry}
-                    >
-                      Retry Validation
-                    </Button>
-                  )}
-                </div>
+    <div className="responsive-container-dashboard">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="space-y-8"
+        >
+          {/* Header Section */}
+          <ModuleHeader
+            icon={Target}
+            title={idea.title}
+            description={`Algorithmically mapping market viability and technical feasibility for your startup concept. Current Status: ${status?.status || 'Initial Assessment'}`}
+            actions={
+              <div className="flex items-center gap-3">
+                <PremiumButton variant="ghost" onClick={() => navigate(`/ideas/${ideaId}`)}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                </PremiumButton>
+                {validation?.status === 'completed' && (
+                  <PremiumButton onClick={() => startValidation()} loading={isActionRunning}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Relaunch Scan
+                  </PremiumButton>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            }
+          />
+
+          {/* Content Section */}
+          <AnimatePresence mode="wait">
+            {status?.status === 'pending' || status?.status === 'processing' ? (
+              <motion.div
+                key="progress"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="max-w-4xl mx-auto w-full"
+              >
+                <ValidationProgress
+                  validationId={validation?.validation_id || ''}
+                  ideaTitle={idea.title}
+                  onComplete={() => {}}
+                  onError={() => {}}
+                  onRetry={() => startValidation()}
+                />
+              </motion.div>
+            ) : validation?.status === 'completed' && validation.report_data ? (
+              <motion.div
+                key="report"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <ValidationReportView
+                  report={validation.report_data}
+                  onExportJson={() => exportReport('json')}
+                  onExportPdf={() => exportReport('pdf')}
+                  onShare={() => {}}
+                  isExporting={isActionRunning}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-12"
+              >
+                <div className="max-w-4xl mx-auto">
+                  <PremiumCard variant="default" className="text-center py-24 border-dashed border-white/10">
+                    <div className="max-w-md mx-auto space-y-8">
+                      <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto border border-primary/20">
+                         <AlertCircle className="h-10 w-10 text-primary" />
+                      </div>
+                      <div className="space-y-3">
+                        <h2 className="text-3xl font-black">Scan Required</h2>
+                        <p className="text-muted-foreground text-lg">
+                          {validation?.status === 'failed' 
+                            ? 'The prior scan encountered a structural failure. Algorithm recalibration required.' 
+                            : 'Deploy the validation engine to map market viability and technical feasibility.'}
+                        </p>
+                      </div>
+                      <PremiumButton 
+                        size="lg" 
+                        className="w-full h-16 text-xl font-black" 
+                        onClick={() => startValidation()}
+                        loading={isActionRunning}
+                      >
+                        {isActionRunning ? 'Initializing...' : 'Deploy Validation Scan'}
+                      </PremiumButton>
+                    </div>
+                  </PremiumCard>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );

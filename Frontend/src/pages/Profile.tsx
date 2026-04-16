@@ -1,246 +1,217 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { User, Mail, Settings, History, CheckCircle, Target } from 'lucide-react';
+import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../contexts/AuthContext';
-import { unifiedToast } from '../lib/toast-utils';
+import { PremiumCard } from '../components/ui/premium/PremiumCard';
+import { PremiumButton } from '../components/ui/premium/PremiumButton';
+import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
+import { User, Mail, Settings, History, CheckCircle, Target, LogOut, ShieldCheck } from 'lucide-react';
+import { motion, Variants } from 'framer-motion';
 
 const Profile = () => {
-  const { user, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: user?.full_name || '',
-    email: user?.email || ''
-  });
+  const { logout } = useAuth();
+  const {
+    user,
+    formData,
+    setFormData,
+    isEditing,
+    isSaving,
+    updateProfile,
+    cancelEdit,
+    startEditing
+  } = useProfile();
 
-  const handleSave = async () => {
-    // Basic validation
-    if (!formData.fullName.trim()) {
-      unifiedToast.error({
-        title: "Validation Error",
-        description: "Full name is required",
-      });
-      return;
-    }
-
-    if (!formData.email.trim()) {
-      unifiedToast.error({
-        title: "Validation Error",
-        description: "Email is required",
-      });
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      unifiedToast.error({
-        title: "Validation Error",
-        description: "Please enter a valid email address",
-      });
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      await updateProfile({
-        full_name: formData.fullName,
-        email: formData.email
-      });
-
-      unifiedToast.success({
-        description: "Profile updated successfully!",
-      });
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      unifiedToast.error({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : 'Failed to update profile. Please try again.',
-      });
-    } finally {
-      setIsSaving(false);
+  const containerVariants: Variants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        duration: 0.6, 
+        ease: "easeOut" 
+      } 
     }
   };
 
-  const handleCancel = () => {
-    // Reset form data to original values
-    setFormData({
-      fullName: user?.full_name || '',
-      email: user?.email || ''
-    });
-    setIsEditing(false);
+  const itemVariants = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { opacity: 1, x: 0 }
   };
 
   return (
-    <div className="px-4 md:px-6 lg:px-8 pt-4 pb-8">
-      {/* Profile Header */}
-      <div className="glass border-border/50 rounded-2xl p-6 md:p-8 bg-white/5 backdrop-blur-xl mb-8">
-        <div className="flex items-center gap-6">
-          <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 p-4 glow-sm shadow-lg">
-            <User className="h-12 w-12 text-white" />
+    <div className="container mx-auto px-6 py-12 max-w-7xl">
+      <motion.div 
+        initial="hidden" 
+        animate="visible" 
+        variants={containerVariants}
+        className="space-y-10"
+      >
+        {/* Profile Header Dashboard */}
+        <PremiumCard variant="glass" className="relative group overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          
+          <div className="flex flex-col md:flex-row items-center gap-8 relative z-20">
+            <div className="relative">
+              <div className="rounded-[2rem] gradient-primary p-5 shadow-2xl shadow-primary/30 glow-sm">
+                <User className="h-16 w-16 text-white" />
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-green-500 border-4 border-[#0a0a0a] h-6 w-6 rounded-full" title="Core System Active" />
+            </div>
+
+            <div className="flex-1 text-center md:text-left space-y-2">
+              <div className="flex items-center justify-center md:justify-start gap-3">
+                <h1 className="text-4xl font-black tracking-tighter text-white">{user?.full_name}</h1>
+                <div className="bg-white/5 border border-white/10 px-3 py-1 rounded-full flex items-center gap-2">
+                  <ShieldCheck className="h-3 w-3 text-blue-400" />
+                  <span className="text-[10px] uppercase font-black tracking-widest text-blue-400">Verified Operator</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col md:flex-row md:items-center gap-4 text-muted-foreground/80">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Mail className="h-4 w-4 text-primary" />
+                  {user?.email}
+                </div>
+              </div>
+            </div>
+
+            <PremiumButton 
+              variant={isEditing ? "outlined" : "primary"}
+              onClick={isEditing ? cancelEdit : startEditing}
+              className="min-w-[160px]"
+            >
+              {isEditing ? <ArrowLeft className="mr-2 h-4 w-4" /> : <Settings className="mr-2 h-4 w-4" />}
+              {isEditing ? 'Discard' : 'Edit Identity'}
+            </PremiumButton>
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              {user?.full_name}
-            </h1>
-            <p className="text-muted-foreground flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              {user?.email}
-            </p>
-            {/* <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Member since Recently
-            </p> */}
+        </PremiumCard>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Main Core Settings */}
+          <div className="lg:col-span-2 space-y-6">
+            <PremiumCard className="relative h-full">
+               <div className="flex items-center gap-4 mb-8">
+                  <div className="h-1 w-12 bg-primary rounded-full" />
+                  <h2 className="text-xl font-bold tracking-tight uppercase text-xs tracking-widest text-muted-foreground">Biometric Data</h2>
+               </div>
+
+               <div className="space-y-8">
+                {isEditing ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase tracking-widest text-blue-400 ml-1">Full Legal Name</Label>
+                      <Input
+                        value={formData.fullName}
+                        onChange={(e) => setFormData(p => ({ ...p, fullName: e.target.value }))}
+                        className="h-14 bg-white/5 border-white/10 rounded-2xl focus:border-primary/50 transition-all text-lg"
+                        placeholder="Operator Name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase tracking-widest text-blue-400 ml-1">Secure Email Communication</Label>
+                      <Input
+                        type="email"
+                        value={formData.email}
+                        readOnly
+                        className="h-14 bg-white/5 border-white/10 rounded-2xl opacity-60 cursor-not-allowed text-lg"
+                      />
+                    </div>
+                    <div className="flex gap-4 pt-4">
+                      <PremiumButton 
+                        onClick={updateProfile} 
+                        loading={isSaving}
+                        className="flex-1 shadow-primary/20"
+                      >
+                        Override Settings
+                      </PremiumButton>
+                      <PremiumButton 
+                        variant="outlined" 
+                        onClick={cancelEdit}
+                        disabled={isSaving}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </PremiumButton>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Operator</Label>
+                      <p className="text-xl font-bold text-white">{user?.full_name}</p>
+                    </motion.div>
+                    
+                    <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Encryption Channel</Label>
+                      <p className="text-xl font-bold text-white truncate">{user?.email}</p>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Clearance Level</Label>
+                      <p className="text-xl font-bold text-green-400 flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5" />
+                        Active Alpha
+                      </p>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Data Centers</Label>
+                      <p className="text-xl font-bold text-white italic">Multi-Regional</p>
+                    </motion.div>
+                  </div>
+                )}
+               </div>
+            </PremiumCard>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setIsEditing(!isEditing)}
-            className="border-border/50 text-white hover:bg-white/10"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            {isEditing ? 'Cancel' : 'Edit Profile'}
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Information */}
-        <div className="lg:col-span-2">
-          <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-xl text-white flex items-center gap-3">
-                <User className="h-6 w-6 text-blue-400" />
-                Profile Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isEditing ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-white">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      value={formData.fullName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                      className="glass border-border/50 bg-white/5 text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-white">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      className="glass border-border/50 bg-white/5 text-white"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="bg-primary hover:bg-primary/90"
+          {/* Intelligence Modules */}
+          <div className="space-y-6">
+            <PremiumCard variant="default">
+               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Archive Access</h3>
+               <div className="space-y-3">
+                  {[
+                    { label: 'Intelligence Pipeline', icon: Target, path: '/ideas', color: 'text-blue-400' },
+                    { label: 'Market Disruptions', icon: History, path: '/discovered-problems', color: 'text-green-400' },
+                    { label: 'Entity Analysis', icon: CheckCircle, path: '/competitor-analysis/history', color: 'text-purple-400' }
+                  ].map((action, i) => (
+                    <motion.button
+                      key={i}
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => navigate(action.path)}
+                      className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all text-left"
                     >
-                      {isSaving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <Label className="text-muted-foreground">Full Name</Label>
-                    <p className="text-white font-medium mt-1">{user?.full_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Email Address</Label>
-                    <p className="text-white font-medium mt-1">{user?.email}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Account Status</Label>
-                    <p className="text-green-400 font-medium mt-1">Active</p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                      <action.icon className={`h-5 w-5 ${action.color}`} />
+                      <span className="text-sm font-bold text-white/90">{action.label}</span>
+                    </motion.button>
+                  ))}
+               </div>
+            </PremiumCard>
 
-        {/* Quick Actions & Navigation */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-lg text-white">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-white/10"
-                onClick={() => navigate('/ideas')}
-              >
-                <CheckCircle className="h-4 w-4 mr-3 text-blue-400" />
-                My Ideas
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-white/10"
-                onClick={() => navigate('/discovered-problems')}
-              >
-                <History className="h-4 w-4 mr-3 text-green-400" />
-                My Discovered Problems
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-white/10"
-                onClick={() => navigate('/competitor-analysis/history')}
-              >
-                <Target className="h-4 w-4 mr-3 text-purple-400" />
-                My Competitor Analyses
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Account Actions */}
-          <Card className="glass border-border/50 bg-white/5 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-lg text-white">Account</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-white/10"
-              >
-                <Settings className="h-4 w-4 mr-3 text-gray-400" />
-                Account Settings
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-red-400 hover:bg-red-500/10"
-                onClick={logout}
-              >
-                <User className="h-4 w-4 mr-3" />
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
+            <PremiumCard variant="default" className="border-red-500/20 bg-red-500/[0.02]">
+               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Termination</h3>
+               <div className="space-y-3">
+                  <PremiumButton 
+                    variant="outlined" 
+                    onClick={logout}
+                    className="w-full border-red-500/20 text-red-400 hover:bg-red-500/10"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sever Connection
+                  </PremiumButton>
+               </div>
+            </PremiumCard>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
 export default Profile;
+
+// Internal utility icons
+const ArrowLeft = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+);

@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Search, Filter, AlertCircle } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface ProblemFormProps {
   onSubmit: (data: FormData) => void;
@@ -85,29 +86,34 @@ const ProblemForm = forwardRef<ProblemFormRef, ProblemFormProps>(({ onSubmit, is
   }));
 
   return (
-    <Card className={`glass border-border/50 ${compact ? 'bg-white/3' : ''}`}>
+    <Card className={cn(
+      "bg-[#2d2048]/30 border-[#442754]/60 shadow-xl rounded-3xl overflow-hidden",
+      compact ? "border-primary/10" : ""
+    )}>
       {!compact && (
-        <CardHeader>
-          <CardTitle className="text-2xl">Search Parameters</CardTitle>
-          <CardDescription className="text-base">
-            Describe the problem space you want to explore and set optional filters
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-black text-white">Search Parameters</CardTitle>
+          <CardDescription className="text-sm text-fuchsia-200/40">
+            Define the problem space you want the AI to explore.
           </CardDescription>
         </CardHeader>
       )}
-      <CardContent className={compact ? 'pt-6' : ''}>
-        <form onSubmit={handleSubmit} className={compact ? "space-y-4" : "space-y-6"}>
+      <CardContent className="p-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Problem Description */}
           <div className="space-y-2">
-            <Label htmlFor="problem" className="text-base">Problem Description *</Label>
+            <label htmlFor="problem" className="brand-label">Problem Description *</label>
             <Textarea
               id="problem"
               name="problemDescription"
               value={formData.problemDescription}
               onChange={(e) => handleChange('problemDescription', e.target.value)}
               placeholder="Describe the problems you want to discover (e.g., 'Small businesses struggling with customer management')"
-              className={`${compact ? 'min-h-[80px]' : 'min-h-[120px]'} resize-none glass border-border/50 focus:border-primary transition-all duration-300 ${
+              className={cn(
+                "brand-textarea",
+                compact ? 'min-h-[70px]' : 'min-h-[100px]',
                 showValidation && !isFormValid ? 'border-red-500' : ''
-              }`}
+              )}
               required
             />
             {showValidation && !isFormValid && (
@@ -124,55 +130,55 @@ const ProblemForm = forwardRef<ProblemFormRef, ProblemFormProps>(({ onSubmit, is
           {/* Optional Context Fields */}
           {!compact && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 border-b border-white/5 pb-2">
                 <Filter className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Context</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-200/30">Optional Context</h3>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-3">
                 {/* Domain */}
                 <div className="space-y-2">
-                  <Label htmlFor="domain">Domain (Optional)</Label>
+                  <label htmlFor="domain" className="brand-label">Domain (Optional)</label>
                   <Input
                     id="domain"
                     type="text"
                     value={formData.domain || ''}
                     onChange={(e) => handleChange('domain', e.target.value)}
-                    placeholder="e.g., Healthcare, SaaS, E-commerce"
-                    className="glass border-border/50 focus:border-primary transition-all duration-300"
+                    placeholder="e.g., Healthcare, SaaS"
+                    className="brand-input"
                     maxLength={100}
                   />
-                  <p className="text-xs text-muted-foreground">Industry or domain context</p>
+                  <p className="text-[10px] text-muted-foreground/50 ml-1">Industry context</p>
                 </div>
-
+                
                 {/* Target Audience */}
                 <div className="space-y-2">
-                  <Label htmlFor="audience">Target Audience (Optional)</Label>
+                  <label htmlFor="audience" className="brand-label">Target Audience (Optional)</label>
                   <Input
                     id="audience"
                     type="text"
                     value={formData.targetAudience || ''}
                     onChange={(e) => handleChange('targetAudience', e.target.value)}
-                    placeholder="e.g., Small businesses, Students, Developers"
-                    className="glass border-border/50 focus:border-primary transition-all duration-300"
+                    placeholder="e.g., Small businesses"
+                    className="brand-input"
                     maxLength={100}
                   />
-                  <p className="text-xs text-muted-foreground">Who faces these problems</p>
+                  <p className="text-[10px] text-muted-foreground/50 ml-1">Who faces these problems</p>
                 </div>
-
+                
                 {/* Region */}
                 <div className="space-y-2">
-                  <Label htmlFor="region">Region (Optional)</Label>
+                  <label htmlFor="region" className="brand-label">Region (Optional)</label>
                   <Input
                     id="region"
                     type="text"
                     value={formData.region || ''}
                     onChange={(e) => handleChange('region', e.target.value)}
-                    placeholder="e.g., North America, Europe, Global"
-                    className="glass border-border/50 focus:border-primary transition-all duration-300"
+                    placeholder="e.g., North America"
+                    className="brand-input"
                     maxLength={100}
                   />
-                  <p className="text-xs text-muted-foreground">Geographic context</p>
+                  <p className="text-[10px] text-muted-foreground/50 ml-1">Geographic context</p>
                 </div>
               </div>
             </div>
