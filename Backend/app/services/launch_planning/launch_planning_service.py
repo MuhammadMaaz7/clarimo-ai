@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from app.db.models.launch_plan_model import (
-    LaunchPlanRequest, LaunchPlanResponse, BudgetBreakdown, 
-    Milestone, ChecklistItem, ProductStage
+    LaunchPlanRequest, LaunchPlanResponse, LaunchPlanInDB,
+    BudgetBreakdown, Milestone, ChecklistItem, ProductStage
 )
 from app.db.database import (
     launch_plans_collection, validation_results_collection, 
@@ -15,6 +15,10 @@ from app.services.launch_planning.llm_summarizer import LaunchPlanLLMSummarizer
 from app.services.launch_planning.market_data import (
     STAGE_BENCHMARKS, DOMAIN_MODIFIERS, TASK_KNOWLEDGE_BASE
 )
+from app.services.shared.relevance_checker import relevance_checker
+from app.core.config import settings
+import asyncio
+import random
 
 class LaunchPlanningService:
     """
@@ -31,7 +35,21 @@ class LaunchPlanningService:
         self.llm_summarizer = LaunchPlanLLMSummarizer()
 
     async def create_plan(self, request: LaunchPlanRequest) -> LaunchPlanResponse:
+        # 0. Relevance Check
+        is_valid, reason = await relevance_checker.validate_relevance(
+            request.idea_description, context_type="Launch Plan"
+        )
+        if not is_valid:
+            logger.warning(f"Launch plan request rejected: {reason}")
+            raise ValueError(reason)
+
         plan_id = str(uuid.uuid4())
+
+        # Demo Delay: 5-10 seconds to simulate deep analysis for FYP Panel
+        if settings.DEMO_MODE:
+            delay = random.uniform(5, 10)
+            logger.info(f"DEMO_MODE active: Sleeping for {delay:.2f}s to simulate deep Launch analysis...")
+            await asyncio.sleep(delay)
         
         # 1. Gather context
         context = await self._gather_context_data(request)
@@ -52,8 +70,11 @@ class LaunchPlanningService:
         heuristic_checklist = self._generate_comprehensive_checklist(request, context, domain)
         
         # 7. LLM Hyper-Contextualization (Turn heuristics into scenario-specific actions)
+        llm_payload = request.dict()
+        llm_payload["detected_domain"] = domain
+        
         summary_data = await self.llm_summarizer.summarize_plan(
-            request_details=request.dict(),
+            request_details=llm_payload,
             scores={
                 "readiness_score": readiness_score,
                 "timing_recommendation": timing_recommendation,
@@ -91,20 +112,33 @@ class LaunchPlanningService:
             risk_factors=summary_data["risks"],
             success_metrics=summary_data["success_metrics"],
             market_saturation_analysis=summary_data["market_saturation_analysis"],
+            inputs=request,
             created_at=datetime.utcnow()
         )
         
         # Store in DB
-        plan_data = response.dict()
-        plan_data["inputs"] = request.dict()
-        plan_data["domain_detected"] = domain
-        plan_data["updated_at"] = datetime.utcnow()
-        launch_plans_collection.insert_one(plan_data)
+        doc = LaunchPlanInDB(
+            **response.dict(exclude={"inputs"}),
+            inputs=request,
+            updated_at=datetime.utcnow()
+        ).dict()
+        doc["domain_detected"] = domain
+        launch_plans_collection.insert_one(doc)
         
         return response
 
     def _detect_domain(self, description: str) -> str:
         desc = description.lower()
+        # Physical/Local business detection
+        local_keywords = ["restaurant", "shop", "street", "store", "noodle", "food", "cafe", "physical", "offline", "retail", "laundry"]
+        if any(w in desc for w in local_keywords):
+            return "local_business"
+
+        # Hardware business detection
+        hw_keywords = ["device", "hardware", "gadget", "sensor", "electronics", "wearable", "iot", "robot"]
+        if any(w in desc for w in hw_keywords):
+            return "hardware"
+
         if any(w in desc for w in ["ai", "intelligence", "learning", "gpt", "bot"]): return "ai"
         if any(w in desc for w in ["shop", "market", "buy", "sell", "store", "commerce"]): return "ecommerce"
         if any(w in desc for w in ["health", "medical", "doctor", "fitness", "bio"]): return "health"

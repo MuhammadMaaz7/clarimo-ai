@@ -87,6 +87,9 @@ class GTMResponse(BaseModel):
     risk_factors: List[str]
     success_metrics: List[str]
 
+    # Reference to inputs
+    inputs: Optional[GTMRequest] = None
+    
     created_at: datetime
     status: str = "completed"
 

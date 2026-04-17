@@ -16,6 +16,8 @@ async def create_launch_plan(request: LaunchPlanRequest):
     try:
         plan = await service.create_plan(request)
         return plan
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

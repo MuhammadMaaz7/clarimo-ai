@@ -31,52 +31,50 @@ STAGE_BENCHMARKS = {
 }
 
 # Domain-specific multipliers to adjust the budget
-# Example: AI startups need more infra, Legal startups need more legal budget
 DOMAIN_MODIFIERS = {
     "ai": {"tech": 1.2, "ops": 1.2, "marketing": 0.8},
     "saas": {"tech": 1.0, "marketing": 1.1},
     "ecommerce": {"tech": 0.8, "marketing": 1.3, "ops": 1.2},
     "health": {"legal": 1.5, "tech": 1.1},
     "fintech": {"legal": 1.8, "tech": 1.1},
-    "mobile": {"tech": 1.1, "marketing": 1.2}
+    "mobile": {"tech": 1.1, "marketing": 1.2},
+    "local_business": {"tech": 0.5, "marketing": 1.2, "ops": 1.5, "legal": 1.3},
+    "hardware": {"tech": 1.4, "marketing": 0.8, "ops": 1.3, "legal": 1.5}
 }
 
 # Extensive library of tasks used to build the roadmap and checklist
-# Each task has a "weight" representing complexity/duration
 TASK_KNOWLEDGE_BASE = {
     "Product Definition": [
         {"task": "MVP Scope Definition & Feature Prioritization (MoSCoW Method)", "weight": 2, "category": "product"},
         {"task": "User Journey Mapping & Information Architecture (Figma/Whimsical)", "weight": 1, "category": "product"},
-        {"task": "Technical Stack Selection & Backend Schema Design", "weight": 2, "category": "technical"},
-        {"task": "Success Metrics (KPI) Definition & Benchmarking", "weight": 1, "category": "ops"},
-        {"task": "Competitor Feature Gap Analysis & Positioning", "weight": 2, "category": "marketing"}
+        {"task": "Physical Location Sourcing & Foot Traffic Analysis", "weight": 2, "category": "ops"},
+        {"task": "Menu/Service Offering Design & Initial Pricing Strategy", "weight": 1, "category": "product"},
+        {"task": "Technical Stack Selection & Backend Schema Design", "weight": 2, "category": "technical"}
     ],
     "Build & Development": [
         {"task": "Development Environment Setup & CI/CD Pipeline Implementation", "weight": 2, "category": "technical"},
-        {"task": "Core Auth, Database Schema & Security Layer Implementation", "weight": 3, "category": "technical"},
-        {"task": "Primary User Workflow & UI Component Development", "weight": 5, "category": "technical"},
-        {"task": "Third-party Integration (Payments, Communication, AI APIs)", "weight": 2, "category": "technical"},
-        {"task": "Internal API Documentation & Unit Testing (Jest/PyTest)", "weight": 2, "category": "technical"},
-        {"task": "End-to-End User Testing & Bug Scrubbing", "weight": 2, "category": "technical"}
+        {"task": "Shop front/Interior Design & Renovation Planning", "weight": 3, "category": "ops"},
+        {"task": "POS System selection & Inventory Management setup", "weight": 2, "category": "technical"},
+        {"task": "Staff Recruitment, Training & Shift Scheduling", "weight": 2, "category": "ops"},
+        {"task": "Hardware Prototyping (CAD Design, 3D Printing, PCB Layout)", "weight": 4, "category": "technical"},
+        {"task": "Manufacturing Partner Selection & Supply Chain Sourcing", "weight": 3, "category": "ops"}
     ],
     "Market Validation": [
         {"task": "High-Conversion Landing Page & Waitlist Management Setup", "weight": 1, "category": "marketing"},
-        {"task": "Reddit, IndieHackers & Community Outreach Strategy", "weight": 2, "category": "marketing"},
-        {"task": "Early Adopter Recruitment (User Interviews & Surveys)", "weight": 2, "category": "ops"},
-        {"task": "Initial Feedback Synthesis & Product Pivot Assessment", "weight": 1, "category": "product"},
-        {"task": "Content Marketing Calendar & SEO Keyword Research", "weight": 2, "category": "marketing"}
+        {"task": "Google Business Profile Optimization & Local Maps SEO", "weight": 1, "category": "marketing"},
+        {"task": "Local Community Outreach (Facebook Groups, Neighborhood Apps)", "weight": 2, "category": "marketing"},
+        {"task": "Early Adopter Recruitment (User Interviews & Surveys)", "weight": 2, "category": "ops"}
     ],
     "Growth & Launch": [
-        {"task": "Product Hunt, Hacker News & Social Media Launch Campaign Prep", "weight": 3, "category": "marketing"},
-        {"task": "Performance Marketing Strategy & Paid Ad Funnel Setup", "weight": 2, "category": "marketing"},
-        {"task": "Scalability & Load Testing (JMeter/K6)", "weight": 2, "category": "technical"},
-        {"task": "Customer Support Workflow & Support Ticket Tooling (Zendesk/Intercom)", "weight": 1, "category": "ops"},
+        {"task": "Product Hunt & Social Media Launch Campaign Prep", "weight": 3, "category": "marketing"},
+        {"task": "Grand Opening Event Planning & Physical Flyer Blitz", "weight": 2, "category": "marketing"},
+        {"task": "Local Influencer/Blogger Visit & Review Campaign", "weight": 2, "category": "marketing"},
         {"task": "Analytics Mastery: Funnel Analysis & Cohort Retention Tracking", "weight": 2, "category": "product"}
     ],
     "Compliance & Business": [
-        {"task": "General Data Protection (GDPR/CCPA) & Privacy Policy Review", "weight": 2, "category": "legal"},
+        {"task": "Health & Safety Permits, Food Licenses & Local Regulations", "weight": 3, "category": "legal"},
+        {"task": "Business Insurance (Liability, Property) & Local Tax Registration", "weight": 2, "category": "legal"},
         {"task": "Trademark Registration & Intellectual Property Strategy", "weight": 3, "category": "legal"},
-        {"task": "Company Formation, Cap Table & Stakeholder Agreement Setup", "weight": 1, "category": "legal"},
-        {"task": "Post-Launch Financial Modeling & Runway Projections", "weight": 1, "category": "ops"}
+        {"task": "Hardware Safety & Compliance Certification (FCC, CE, RoHS)", "weight": 4, "category": "legal"}
     ]
 }

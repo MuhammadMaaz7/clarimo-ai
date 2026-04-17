@@ -14,5 +14,8 @@ class Settings:
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     OPENROUTER_API_URL: str = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
     OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "google/gemma-3-27b-it:free")
+    
+    # Demo/Presentation settings
+    DEMO_MODE: bool = os.getenv("DEMO_MODE", "False").lower() == "true"
 
 settings = Settings()

@@ -23,6 +23,8 @@ async def create_gtm_strategy(request: GTMRequest):
     try:
         strategy = await service.create_strategy(request)
         return strategy
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

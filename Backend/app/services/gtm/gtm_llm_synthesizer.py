@@ -36,7 +36,17 @@ class GTMLLMSynthesizer:
         Main synthesis call. Returns refined GTM data from LLM.
         Falls back to heuristic data on any failure.
         """
-        prompt = self._build_prompt(request_details, heuristic_channels, heuristic_roadmap, context)
+        # Prepare serializable data
+        def to_dict(obj):
+            if isinstance(obj, dict): return obj
+            if hasattr(obj, 'dict'): return obj.dict()
+            if hasattr(obj, 'model_dump'): return obj.model_dump()
+            return str(obj)
+
+        channels_data = [to_dict(c) for c in heuristic_channels]
+        roadmap_data = [to_dict(m) for m in heuristic_roadmap]
+
+        prompt = self._build_prompt(request_details, channels_data, roadmap_data, context)
 
         try:
             raw = await self.llm.call_llm(
@@ -80,6 +90,7 @@ STARTUP CONTEXT:
 - Validation Score: {context.get('validation_score', 'N/A')}/5
 - Competitor Count: {context.get('competitor_count', 'Unknown')}
 - Key Pain Points: {', '.join(context.get('pain_points', [])[:3]) or 'Not provided'}
+- Detected Domain Type: {details.get('detected_domain', 'Standard Digital')}
 
 HEURISTIC CHANNELS (refine tactics to be idea-specific):
 {json.dumps(channels[:4], indent=1)}
@@ -89,14 +100,18 @@ HEURISTIC ROADMAP (rewrite activities to be scenario-specific):
 
 YOUR TASKS (be specific, not generic):
 1. EXECUTIVE SUMMARY: 3-4 sentences connecting their budget, audience, and business model.
+   - IF THE IDEA IS A PHYSICAL OR LOCAL BUSINESS (e.g. restaurant, gym, retail): STICK RIGIDLY TO PHYSICAL REALITY. UNLEARN software-only patterns. Focus on foot traffic, signage, local permits, community engagement, and regional competition. Do NOT suggest "SaaS", "Subscription", or "Viral Digital Growth" unless it's a hybrid model.
+   - IF THE IDEA IS HARDWARE: Focus on product-market fit via physical distribution, manufacturing, and hardware-specific sales cycles.
 2. POSITIONING STATEMENT: "For [target audience] who [pain point], [product] is the [category] that [key benefit], unlike [competitor] which [limitation]."
-3. TARGET SEGMENT ANALYSIS: 2-3 sentences on who the ideal first 100 customers are and where to find them.
+3. TARGET SEGMENT ANALYSIS: 2-3 sentences on who the ideal first 100 customers are and where to find them. (For local businesses, focus on the immediate neighborhood/city/radius).
 4. COMPETITIVE DIFFERENTIATION: 2 sentences on the single strongest differentiator.
 5. MESSAGING GUIDE: Write a headline, tagline, elevator pitch, tone, 4 key messages, 3 differentiators, 3 pain points addressed, and a CTA — all specific to this startup.
-6. REFINED CHANNELS: Rewrite the 'tactics' for each channel to be specific to this startup's audience and product.
+6. REFINED CHANNELS: Rewrite the 'tactics' for each channel to be specific to this startup. 
+   - For local businesses, use physical channels: local SEO (Google Maps), flyers, local partnerships, community events, local newspaper/radio if budget allowed.
 7. REFINED ROADMAP: Rewrite 'activities' in each phase to be concrete actions for this startup.
-8. RISKS: 3 GTM-specific risks for this business model and market.
-9. SUCCESS METRICS: 3 KPIs with target values relevant to this startup.
+   - For local businesses, phases MUST include "Lease/Permit acquisition", "Physical Setup", "Grand Opening", "Local Engagement".
+8. RISKS: 3 GTM-specific risks for this business model and market (e.g. supply chain, local competition, zoning).
+9. SUCCESS METRICS: 3 KPIs with target values relevant to this startup (e.g. foot traffic, local search rank, average order size).
 
 OUTPUT JSON FORMAT (strict):
 {{

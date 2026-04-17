@@ -21,8 +21,12 @@ from app.db.database import (
 from app.core.logging import logger
 from app.services.gtm.gtm_llm_synthesizer import GTMLLMSynthesizer
 from app.services.gtm.gtm_data import (
-    CHANNEL_LIBRARY, DOMAIN_CHANNEL_MAP, CAMPAIGN_PHASES, TONE_MAP
+    CHANNEL_LIBRARY, DOMAIN_CHANNEL_MAP, CAMPAIGN_PHASES, LOCAL_CAMPAIGN_PHASES, TONE_MAP
 )
+from app.services.shared.relevance_checker import relevance_checker
+from app.core.config import settings
+import asyncio
+import random
 
 
 class GTMService:
@@ -44,7 +48,21 @@ class GTMService:
         self.synthesizer = GTMLLMSynthesizer()
 
     async def create_strategy(self, request: GTMRequest) -> GTMResponse:
+        # 0. Relevance Check
+        is_valid, reason = await relevance_checker.validate_relevance(
+            request.startup_description, context_type="Go-to-Market Strategy"
+        )
+        if not is_valid:
+            logger.warning(f"GTM request rejected: {reason}")
+            raise ValueError(reason)
+
         gtm_id = str(uuid.uuid4())
+
+        # Demo Delay: 5-10 seconds to simulate deep analysis for FYP Panel
+        if settings.DEMO_MODE:
+            delay = random.uniform(5, 10)
+            logger.info(f"DEMO_MODE active: Sleeping for {delay:.2f}s to simulate deep GTM analysis...")
+            await asyncio.sleep(delay)
 
         # 1. Context from prior modules
         context = await self._gather_context(request)
@@ -59,11 +77,14 @@ class GTMService:
         heuristic_messaging = self._build_messaging_guide(request, context)
 
         # 5. Heuristic roadmap
-        heuristic_roadmap = self._build_campaign_roadmap(request)
+        heuristic_roadmap = self._build_campaign_roadmap(request, domain)
 
         # 6. LLM synthesis
+        llm_payload = request.dict()
+        llm_payload["detected_domain"] = domain
+        
         llm_data = await self.synthesizer.synthesize(
-            request_details=request.dict(),
+            request_details=llm_payload,
             heuristic_channels=[c.dict() for c in heuristic_channels],
             heuristic_roadmap=[m.dict() for m in heuristic_roadmap],
             context=context
@@ -86,12 +107,13 @@ class GTMService:
             competitive_differentiation=llm_data.get("competitive_differentiation") or "Differentiation analysis pending.",
             risk_factors=llm_data.get("risk_factors") or ["Market timing risk", "Channel saturation", "Budget constraints"],
             success_metrics=llm_data.get("success_metrics") or ["Monthly active users", "CAC < LTV/3", "30-day retention > 40%"],
+            inputs=request,
             created_at=datetime.utcnow()
         )
 
         # 8. Persist
         doc = GTMInDB(
-            **response.dict(),
+            **response.dict(exclude={"inputs"}),
             inputs=request,
             domain_detected=domain,
             updated_at=datetime.utcnow()
@@ -140,7 +162,19 @@ class GTMService:
     # ── Domain Detection ─────────────────────────────────────────────────────
 
     def _detect_domain(self, description: str, business_model: BusinessModel) -> str:
-        """Maps business model enum directly; uses keyword fallback for saas."""
+        """Detects domain and categorizes physical vs digital businesses."""
+        desc = description.lower()
+        
+        # Physical/Local business detection
+        local_keywords = ["restaurant", "shop", "street", "store", "noodle", "food", "cafe", "physical", "offline", "retail"]
+        if any(w in desc for w in local_keywords):
+            return "local_business"
+        
+        # Hardware business detection
+        hw_keywords = ["device", "hardware", "gadget", "sensor", "electronics", "wearable", "iot", "robot"]
+        if any(w in desc for w in hw_keywords):
+            return "hardware"
+
         model_map = {
             BusinessModel.B2B: "b2b",
             BusinessModel.B2C: "b2c",
@@ -226,13 +260,16 @@ class GTMService:
 
     # ── Heuristic Campaign Roadmap ───────────────────────────────────────────
 
-    def _build_campaign_roadmap(self, request: GTMRequest) -> List[CampaignMilestone]:
+    def _build_campaign_roadmap(self, request: GTMRequest, domain: str) -> List[CampaignMilestone]:
         """Scales phase durations to the user's launch_date_weeks."""
         total_weeks = max(request.launch_date_weeks, 4)
         milestones: List[CampaignMilestone] = []
         current_week = 1
 
-        for phase in CAMPAIGN_PHASES:
+        # Select template based on domain
+        phases = LOCAL_CAMPAIGN_PHASES if domain == "local_business" else CAMPAIGN_PHASES
+
+        for phase in phases:
             duration = max(1, int(total_weeks * phase["ratio"]))
             week_end = current_week + duration - 1
 

@@ -118,6 +118,50 @@ CHANNEL_LIBRARY = {
             "Affiliate commission model to reduce upfront cost",
             "Product seeding to niche creators"
         ]
+    },
+    "Google Maps / Local SEO": {
+        "category": "organic",
+        "best_for": ["local_business"],
+        "reach": "100–1,000 local views/week",
+        "cost": "Free",
+        "tactics": [
+            "Optimize Google Business Profile with high-res photos",
+            "Encourage 5-star reviews from first customers",
+            "Update location-based keywords in business description"
+        ]
+    },
+    "Physical Marketing (Flyers/Signage)": {
+        "category": "traditional",
+        "best_for": ["local_business"],
+        "reach": "Depends on foot traffic and distribution area",
+        "cost": "$50–$300 (printing)",
+        "tactics": [
+            "In-store signage for initial attraction",
+            "Door-to-door flyers in the immediate neighborhood",
+            "QR codes on tables/window for digital menu/loyalty"
+        ]
+    },
+    "Hyper-local Social Media": {
+        "category": "paid",
+        "best_for": ["local_business", "b2c"],
+        "reach": "2k–10k local residents",
+        "cost": "$100–$500/month",
+        "tactics": [
+            "Facebook Ads targeting a 2-5 mile radius",
+            "Instagram ads with 'Get Directions' CTA",
+            "Nextdoor community sponsorship"
+        ]
+    },
+    "Local Partnerships": {
+        "category": "partnership",
+        "best_for": ["local_business"],
+        "reach": "Partner's customer foot traffic",
+        "cost": "Free / Barter",
+        "tactics": [
+            "Cross-promotion vouchers with nearby non-competing shops",
+            "Supply products as wholesale to local cafes",
+            "Joint local event / street pop-up"
+        ]
     }
 }
 
@@ -161,12 +205,26 @@ DOMAIN_CHANNEL_MAP = {
         "Google Search Ads",
         "Email Marketing"
     ],
+    "hardware": [
+        "Influencer / Creator Marketing",
+        "Reddit / Niche Communities",
+        "Google Search Ads",
+        "Physical Marketing (Flyers/Signage)",
+        "Partnership / Integrations"
+    ],
     "b2b2c": [
         "LinkedIn Ads",
         "Partnership / Integrations",
         "Content Marketing / SEO",
         "Email Marketing",
         "Cold Outreach (Email/LinkedIn)"
+    ],
+    "local_business": [
+        "Google Maps / Local SEO",
+        "Physical Marketing (Flyers/Signage)",
+        "Hyper-local Social Media",
+        "Local Partnerships",
+        "Instagram / TikTok Organic"
     ]
 }
 
@@ -176,55 +234,110 @@ DOMAIN_CHANNEL_MAP = {
 CAMPAIGN_PHASES = [
     {
         "phase": "Pre-Launch Awareness",
-        "ratio": 0.30,           # 30% of total timeline
-        "objective": "Build brand awareness and grow a warm audience before launch day.",
+        "ratio": 0.30,
+        "objective": "Build brand awareness and local presence.",
         "activities": [
-            "Publish teaser content and landing page with waitlist",
-            "Begin SEO content publishing (3 posts/week)",
-            "Seed communities (Reddit, Slack groups, Discord)",
-            "Reach out to 20 potential beta users for feedback"
+            "Establish digital presence (GMB, Social profiles)",
+            "Begin organic content publishing (3 posts/week)",
+            "Analyze local competitor foot traffic and pricing",
+            "Engage in local community groups / neighborhoods"
         ],
-        "kpis": ["Waitlist signups", "Landing page conversion rate", "Social followers"],
+        "kpis": ["Initial followers", "Local brand recall", "Digital profile views"],
         "budget_pct": 0.20
     },
     {
-        "phase": "Beta & Validation Sprint",
+        "phase": "Soft Opening / Beta Test",
         "ratio": 0.25,
-        "objective": "Onboard first users, collect feedback, and refine messaging.",
+        "objective": "Test operations with a small group and gather initial feedback.",
         "activities": [
-            "Invite waitlist to closed beta",
-            "Run 10 user interviews to validate messaging",
-            "A/B test landing page headlines",
-            "Set up analytics (Mixpanel / PostHog)"
+            "Invite friends, family, and nearby residents for a soft opening",
+            "Collect direct feedback on product/service quality",
+            "A/B test core offering combinations",
+            "Refine operational workflow (delivery, serving, or setup)"
         ],
-        "kpis": ["Beta activation rate", "NPS score", "Feature usage heatmap"],
+        "kpis": ["Feedback positivity score", "Return intent", "Operational efficiency"],
         "budget_pct": 0.15
     },
     {
-        "phase": "Launch Day Blitz",
+        "phase": "Grand Launch Event",
         "ratio": 0.10,
-        "objective": "Maximize visibility and first-day signups across all channels simultaneously.",
+        "objective": "Create a massive local splash and drive maximum first-day traffic.",
         "activities": [
-            "Product Hunt / Hacker News launch",
-            "Email blast to full waitlist",
-            "Paid ad campaigns go live",
-            "Founder posts on LinkedIn/Twitter with story"
+            "Grand opening event with special offers/discounts",
+            "Heavy local signage and physical flyer distribution",
+            "Influencer/local blogger visit and review",
+            "Social media 'now open' blitz with local hashtags"
         ],
-        "kpis": ["Day-1 signups", "Product Hunt ranking", "Press mentions"],
+        "kpis": ["First-day foot traffic/orders", "Grand opening revenue", "Social mentions"],
         "budget_pct": 0.30
     },
     {
-        "phase": "Post-Launch Growth Engine",
+        "phase": "Sustainable Growth",
         "ratio": 0.35,
-        "objective": "Convert launch momentum into sustainable acquisition and retention.",
+        "objective": "Build loyalty and expand local footprint.",
         "activities": [
-            "Optimize paid channels based on launch data",
-            "Publish case studies from beta users",
-            "Launch referral / affiliate program",
-            "Double down on top-performing organic channel"
+            "Launch local loyalty / referral program",
+            "Optimize local ad spend ( radius targeting)",
+            "Forge partnerships with nearby businesses",
+            "Encourage and manage online reviews for trust"
         ],
-        "kpis": ["CAC", "MoM user growth", "Churn rate", "LTV:CAC ratio"],
+        "kpis": ["Repeat customer rate", "Average transaction value", "Local search ranking"],
         "budget_pct": 0.35
+    }
+]
+
+LOCAL_CAMPAIGN_PHASES = [
+    {
+        "phase": "Local Setup & Awareness",
+        "ratio": 0.30,
+        "objective": "Prepare the physical location and generate local buzz.",
+        "activities": [
+            "Set up 'Coming Soon' signage at the location",
+            "Claim and optimize Google Business Profile",
+            "Distribute flyers in the 1-mile radius",
+            "Connect with neighboring business owners"
+        ],
+        "kpis": ["Inquiries", "GMB Profile Views", "Local Group mentions"],
+        "budget_pct": 0.25
+    },
+    {
+        "phase": "Soft Opening Sprint",
+        "ratio": 0.25,
+        "objective": "Test food/service quality with limited local audience.",
+        "activities": [
+            "Host invite-only tasting/demo sessions",
+            "Collect feedback on menu/pricing",
+            "Refine kitchen/service workflow",
+            "Capture high-quality photos for social media"
+        ],
+        "kpis": ["Customer Satisfaction", "Dish/Product popularity", "Wait times"],
+        "budget_pct": 0.10
+    },
+    {
+        "phase": "Grand Opening Blitz",
+        "ratio": 0.10,
+        "objective": "Maximize neighborhood foot traffic on launch day.",
+        "activities": [
+            "Launch Day event with BOGO offers",
+            "Banner/Balloon installation at shop front",
+            "Nextdoor and Local Facebook Ads go live",
+            "Live music or local personality appearance"
+        ],
+        "kpis": ["Foot traffic count", "Opening day sales", "Google Reviews"],
+        "budget_pct": 0.40
+    },
+    {
+        "phase": "Neighborhood Dominance",
+        "ratio": 0.35,
+        "objective": "Convert one-time visitors into local regulars.",
+        "activities": [
+            "Implement physical loyalty punch-cards",
+            "Weekly 'Neighbor Specials' promotions",
+            "Sponsor local school/community events",
+            "Optimized hyper-local social ads"
+        ],
+        "kpis": ["Returning customer rate", "Mouth-to-mouth referrals", "Review score"],
+        "budget_pct": 0.25
     }
 ]
 

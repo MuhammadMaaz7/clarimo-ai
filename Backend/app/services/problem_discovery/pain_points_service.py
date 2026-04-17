@@ -12,6 +12,7 @@ import math
 import os
 import asyncio
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 from groq import Groq
 
@@ -568,14 +569,41 @@ Cluster data:
             pain_points_dir = Path("data/pain_points") / user_id / input_id
             results_file = pain_points_dir / "marketable_pain_points_all.json"
             
-            if not results_file.exists():
-                return None
+            if results_file.exists():
+                logger.info(f"Loading original (unranked) pain points for {input_id}")
+                with open(results_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    data["is_ranked"] = False
+                    return data
             
-            logger.info(f"Loading original (unranked) pain points for {input_id}")
-            with open(results_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                data["is_ranked"] = False
-                return data
+            # Final fall back to database if files are missing
+            try:
+                from app.services.problem_discovery.pain_points_db_service import pain_points_db_service
+                db_analysis = await pain_points_db_service.get_pain_points_analysis(user_id, input_id)
+                if db_analysis:
+                    logger.info(f"Loading pain points from database for {input_id}")
+                    
+                    # Handle timestamp conversion if it's a datetime object from Mongo
+                    timestamp = db_analysis.get("analysis_timestamp")
+                    if isinstance(timestamp, datetime):
+                        timestamp = timestamp.timestamp()
+                    elif not timestamp:
+                        timestamp = time.time()
+                        
+                    return {
+                        "metadata": {
+                            "total_clusters": db_analysis.get("total_clusters", 0),
+                            "analysis_timestamp": timestamp,
+                            "user_id": user_id,
+                            "input_id": input_id
+                        },
+                        "pain_points": db_analysis.get("pain_points", []),
+                        "is_ranked": False
+                    }
+            except Exception as db_e:
+                logger.error(f"Error falling back to database for pain points: {db_e}")
+            
+            return None
                 
         except Exception as e:
             logger.error(f"Error loading pain points results: {e}")

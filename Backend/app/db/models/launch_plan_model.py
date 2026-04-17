@@ -63,6 +63,9 @@ class LaunchPlanResponse(BaseModel):
     success_metrics: List[str]
     market_saturation_analysis: Optional[str] = None
     
+    # Reference to inputs
+    inputs: Optional[LaunchPlanRequest] = None
+    
     created_at: datetime
     status: str = "completed"
 
