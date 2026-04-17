@@ -36,17 +36,22 @@ export default function LaunchPlanning() {
   });
 
   const handleSubmit = async () => {
-    if (!formData.idea_description) { 
-      toast.error('Please provide an idea description.'); 
-      return; 
+    if (!formData.idea_description || formData.idea_description.trim().length < 15) {
+      toast.error('Please provide a more detailed idea description (min 15 chars).');
+      return;
+    }
+    const hasSpace = formData.idea_description.trim().includes(' ');
+    if (!hasSpace && formData.idea_description.trim().length > 20) {
+      toast.error('Input looks like gibberish. Please provide a real business description.');
+      return;
     }
     setLoading(true);
     try {
       const response = await api.launchPlanning.createPlan({ ...formData, user_id: user?.id });
       setResult(response);
       toast.success('Launch plan generated!');
-    } catch (err) {
-      toast.error('Failed to generate launch plan. Please try again.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate launch plan. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -59,7 +64,7 @@ export default function LaunchPlanning() {
 
   return (
     <div className="responsive-container-dashboard">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         <ModuleHeader
           icon={Rocket}
           title="Launch Planning"

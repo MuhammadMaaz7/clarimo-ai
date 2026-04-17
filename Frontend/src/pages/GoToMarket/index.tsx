@@ -31,8 +31,17 @@ export default function GoToMarket() {
   });
 
   const handleSubmit = async () => {
-    if (!formData.startup_description || !formData.target_audience) {
-      toast.error('Please fill in the startup description and target audience.');
+    if (!formData.startup_description || formData.startup_description.trim().length < 15) {
+      toast.error('Please provide a more detailed startup description (min 15 chars).');
+      return;
+    }
+    const hasSpace = formData.startup_description.trim().includes(' ');
+    if (!hasSpace && formData.startup_description.trim().length > 20) {
+      toast.error('Input looks like gibberish. Please provide a real business description.');
+      return;
+    }
+    if (!formData.target_audience) {
+      toast.error('Please provide a target audience.');
       return;
     }
     setLoading(true);
@@ -40,8 +49,8 @@ export default function GoToMarket() {
       const response = await api.gtm.createStrategy({ ...formData, user_id: user?.id });
       setResult(response);
       toast.success('GTM strategy generated!');
-    } catch (err) {
-      toast.error('Failed to generate GTM strategy. Please try again.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate GTM strategy. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -54,7 +63,7 @@ export default function GoToMarket() {
 
   return (
     <div className="responsive-container-dashboard">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <ModuleHeader
           icon={Megaphone}

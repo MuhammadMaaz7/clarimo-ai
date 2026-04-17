@@ -1,16 +1,22 @@
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../contexts/AuthContext';
+import { useDashboardStats } from '../hooks/useDashboardStats';
 import { PremiumCard } from '../components/ui/premium/PremiumCard';
 import { PremiumButton } from '../components/ui/premium/PremiumButton';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
-import { User, Mail, Settings, History, CheckCircle, Target, LogOut, ShieldCheck } from 'lucide-react';
+import { 
+  User, Mail, Settings, History, CheckCircle, 
+  Target, LogOut, ShieldCheck, Rocket, Layers,
+  ChevronRight, Activity
+} from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { stats } = useDashboardStats();
   const {
     user,
     formData,
@@ -89,11 +95,11 @@ const Profile = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Main Core Settings */}
-          <div className="lg:col-span-2 space-y-6">
-            <PremiumCard className="relative h-full">
+          <div className="lg:col-span-2 space-y-10">
+            <PremiumCard className="relative">
                <div className="flex items-center gap-4 mb-8">
                   <div className="h-1 w-12 bg-primary rounded-full" />
-                  <h2 className="text-xl font-bold tracking-tight uppercase text-xs tracking-widest text-muted-foreground">Biometric Data</h2>
+                  <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Biometric Data</h2>
                </div>
 
                <div className="space-y-8">
@@ -143,37 +149,88 @@ const Profile = () => {
                     </motion.div>
                     
                     <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Encryption Channel</Label>
-                      <p className="text-xl font-bold text-white truncate">{user?.email}</p>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
                       <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Clearance Level</Label>
                       <p className="text-xl font-bold text-green-400 flex items-center gap-2">
                         <ShieldCheck className="h-5 w-5" />
                         Active Alpha
                       </p>
                     </motion.div>
-
-                    <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Data Centers</Label>
-                      <p className="text-xl font-bold text-white italic">Multi-Regional</p>
-                    </motion.div>
                   </div>
                 )}
                </div>
             </PremiumCard>
+
+            {/* Unified Exploration History */}
+            <div className="space-y-6">
+               <div className="flex items-center gap-4 mb-2">
+                  <div className="h-1 w-12 bg-purple-500 rounded-full" />
+                  <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Strategic Archives</h2>
+               </div>
+               <div className="grid md:grid-cols-2 gap-6">
+                {[
+                  { 
+                    name: 'Problem discovery archives', 
+                    count: stats?.problemDiscovery.total || 0, 
+                    icon: Layers, 
+                    color: 'text-blue-400', 
+                    link: () => navigate('/problem-discovery/history') 
+                  },
+                  { 
+                    name: 'GTM Strategy Vault', 
+                    count: stats?.gtm.total || 0, 
+                    icon: Target, 
+                    color: 'text-purple-400', 
+                    link: () => navigate('/go-to-market/history') 
+                  },
+                  { 
+                    name: 'Launch Planning roadmaps', 
+                    count: stats?.launchPlanning.total || 0, 
+                    icon: Rocket, 
+                    color: 'text-orange-400', 
+                    link: () => navigate('/launch-planning/history') 
+                  },
+                  { 
+                    name: 'Valuable Competitor Intel', 
+                    count: stats?.competitorAnalysis.total || 0, 
+                    icon: Activity, 
+                    color: 'text-green-400', 
+                    link: () => navigate('/competitor-analysis/history') 
+                  }
+                ].map((item, i) => (
+                  <motion.div 
+                    key={i} 
+                    variants={itemVariants}
+                    onClick={item.link}
+                    className="bg-white/[0.02] border border-white/5 p-6 rounded-[2rem] hover:bg-white/[0.04] transition-all cursor-pointer group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-2xl bg-white/5 ${item.color} group-hover:scale-110 transition-transform`}>
+                        <item.icon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold group-hover:text-primary transition-colors">{item.name}</h4>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black mt-1">
+                          {item.count} ARCHIVED ENTITIES
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-white transition-colors" />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Intelligence Modules */}
+          {/* Side Module Integration */}
           <div className="space-y-6">
             <PremiumCard variant="default">
-               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Archive Access</h3>
+               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Quick Actions</h3>
                <div className="space-y-3">
                   {[
                     { label: 'Intelligence Pipeline', icon: Target, path: '/ideas', color: 'text-blue-400' },
                     { label: 'Market Disruptions', icon: History, path: '/discovered-problems', color: 'text-green-400' },
-                    { label: 'Entity Analysis', icon: CheckCircle, path: '/competitor-analysis/history', color: 'text-purple-400' }
+                    { label: 'New Launch Plan', icon: Rocket, path: '/launch-planning', color: 'text-orange-400' },
+                    { label: 'New GTM strategy', icon: Target, path: '/go-to-market', color: 'text-purple-400' }
                   ].map((action, i) => (
                     <motion.button
                       key={i}
@@ -209,9 +266,9 @@ const Profile = () => {
   );
 };
 
-export default Profile;
-
 // Internal utility icons
 const ArrowLeft = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
 );
+
+export default Profile;

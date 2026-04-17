@@ -7,6 +7,7 @@ interface DashboardStats {
     total: number;
     totalProblems: number;
     latest?: string | null;
+    latestTitle?: string | null;
   };
   ideas: {
     total: number;
@@ -17,15 +18,22 @@ interface DashboardStats {
     total: number;
     totalCompetitors: number;
     latest?: string | null;
+    latestTitle?: string | null;
   };
   launchPlanning: {
     total: number;
     latest?: string | null;
+    latestTitle?: string | null;
+  };
+  gtm: {
+    total: number;
+    latest?: string | null;
+    latestTitle?: string | null;
   };
 }
 
 interface Activity {
-  type: 'problem' | 'idea' | 'competitor' | 'launch';
+  type: 'problem' | 'idea' | 'competitor' | 'launch' | 'gtm';
   count: number;
   date?: string | null;
 }
@@ -43,11 +51,12 @@ export function useDashboardStats() {
       setError(null);
 
       // Fetch stats from all modules using settled promises to ensure partial success works
-      const [problemStats, ideaStats, competitorStats, launchStats] = await Promise.allSettled([
+      const [problemStats, ideaStats, competitorStats, launchStats, gtmStats] = await Promise.allSettled([
         api.painPoints.getStats(),
         api.ideas.getAll(),
         api.competitorAnalyses.list(),
         api.launchPlanning.getHistory(user?.id || ''),
+        api.gtm.getHistory(user?.id || ''),
       ]);
 
       const dashboardStats: DashboardStats = {
@@ -55,6 +64,7 @@ export function useDashboardStats() {
         ideas: { total: 0, validated: 0 },
         competitorAnalysis: { total: 0, totalCompetitors: 0 },
         launchPlanning: { total: 0 },
+        gtm: { total: 0 },
       };
 
       const activities: Activity[] = [];
@@ -98,8 +108,20 @@ export function useDashboardStats() {
         dashboardStats.launchPlanning = {
           total: plans.length,
           latest: plans.length > 0 ? plans[0].created_at : undefined,
+          latestTitle: plans.length > 0 ? (plans[0].inputs?.startup_name || plans[0].inputs?.target_audience) : undefined,
         };
         if (plans.length > 0) activities.push({ type: 'launch', count: plans.length, date: plans[0].created_at });
+      }
+
+      // Process GTM stats
+      if (gtmStats.status === 'fulfilled') {
+        const strategies = Array.isArray(gtmStats.value) ? gtmStats.value : [];
+        dashboardStats.gtm = {
+          total: strategies.length,
+          latest: strategies.length > 0 ? strategies[0].created_at : undefined,
+          latestTitle: strategies.length > 0 ? (strategies[0].inputs?.startup_description.slice(0, 30) + '...') : undefined,
+        };
+        if (strategies.length > 0) activities.push({ type: 'gtm', count: strategies.length, date: strategies[0].created_at });
       }
 
       setStats(dashboardStats);
@@ -128,6 +150,7 @@ export function useDashboardStats() {
     totalActions: (stats?.problemDiscovery.total || 0) + 
                   (stats?.ideas.total || 0) + 
                   (stats?.competitorAnalysis.total || 0) + 
-                  (stats?.launchPlanning.total || 0),
+                  (stats?.launchPlanning.total || 0) +
+                  (stats?.gtm.total || 0),
   };
 }

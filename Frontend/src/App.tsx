@@ -38,7 +38,9 @@ const CompetitorAnalysis = lazy(() => import("./pages/CompetitorAnalysis"));
 const CompetitorAnalysisHistory = lazy(() => import("./pages/CompetitorAnalysisHistory"));
 const CompetitorAnalysisDetail = lazy(() => import("./pages/CompetitorAnalysisDetail"));
 const LaunchPlanning = lazy(() => import("./pages/LaunchPlanning"));
+const LaunchPlanningHistory = lazy(() => import("./pages/LaunchPlanningHistory"));
 const GoToMarket = lazy(() => import("./pages/GoToMarket"));
+const GoToMarketHistory = lazy(() => import("./pages/GoToMarketHistory"));
 
 const queryClient = new QueryClient();
 
@@ -46,7 +48,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   
   return (
-    <div className="h-screen flex flex-col bg-[#211c37] overflow-hidden relative">
+    <div className="h-[100dvh] flex flex-col bg-[#211c37] overflow-hidden relative">
       {/* Unified Background Gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-primary/5 to-transparent pointer-events-none" />
       
@@ -122,7 +124,9 @@ const AppContent = () => {
                     <Route path="/competitor-analysis/:productId" element={<ProtectedRoute><CompetitorAnalysisDetail /></ProtectedRoute>} />
                     <Route path="/customer-finding" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
                     <Route path="/launch-planning" element={<ProtectedRoute><LaunchPlanning /></ProtectedRoute>} />
+                    <Route path="/launch-planning/history" element={<ProtectedRoute><LaunchPlanningHistory /></ProtectedRoute>} />
                     <Route path="/go-to-market" element={<ProtectedRoute><GoToMarket /></ProtectedRoute>} />
+                    <Route path="/go-to-market/history" element={<ProtectedRoute><GoToMarketHistory /></ProtectedRoute>} />
                     <Route path="*" element={<ComingSoon />} />
                   </Routes>
                 </Suspense>

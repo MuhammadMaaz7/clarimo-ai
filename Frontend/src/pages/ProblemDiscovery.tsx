@@ -121,7 +121,7 @@ const ProblemDiscovery = () => {
 
   return (
     <div className="responsive-container-dashboard">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         <ModuleHeader
           icon={Sparkles}
           title="Problem Discovery"

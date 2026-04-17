@@ -43,7 +43,8 @@ const ProblemForm = forwardRef<ProblemFormRef, ProblemFormProps>(({ onSubmit, is
     return validateText(text).trim();
   };
 
-  const isFormValid = formData.problemDescription.trim().length >= 10;
+  const isFormValid = formData.problemDescription.trim().length >= 10 && 
+                     (formData.problemDescription.includes(' ') || formData.problemDescription.length < 20);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

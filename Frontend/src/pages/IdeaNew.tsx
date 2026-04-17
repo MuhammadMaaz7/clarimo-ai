@@ -21,7 +21,7 @@ export default function IdeaNew() {
 
   return (
     <div className="responsive-container-dashboard">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8">
         <ModuleHeader
           icon={Lightbulb}
           title="Submit Your Idea"

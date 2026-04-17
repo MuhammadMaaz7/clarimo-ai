@@ -9,7 +9,8 @@ import {
   History,
   AlertCircle,
   Activity,
-  Rocket
+  Rocket,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
@@ -78,7 +79,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold tracking-tight">Ecosystem Progress</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent ml-8" />
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {/* Problem Discovery Stats */}
             <PremiumCard glow variant="default" className="relative group">
               <div className="flex items-center justify-between mb-8">
@@ -151,26 +152,70 @@ export default function Dashboard() {
               </div>
             </PremiumCard>
 
-            {/* Launch Planning Stats */}
+             {/* Launch Planning Stats */}
             <PremiumCard glow variant="default" className="relative group">
               <div className="flex items-center justify-between mb-8">
                 <div className="p-3 bg-orange-500/10 rounded-2xl group-hover:bg-orange-500/20 transition-colors">
                   <Rocket className="h-6 w-6 text-orange-500 group-hover:scale-110 transition-transform" />
                 </div>
-                <PremiumButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/launch-planning')}
-                  className="text-xs group-hover:text-white"
-                >
-                  Go
-                </PremiumButton>
+                <div className="flex gap-2">
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/launch-planning/history')}
+                    className="text-xs group-hover:text-white"
+                  >
+                    History
+                  </PremiumButton>
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/launch-planning')}
+                    className="text-xs group-hover:text-white bg-orange-500/10"
+                  >
+                    Go
+                  </PremiumButton>
+                </div>
               </div>
               <div className="space-y-2">
                 <p className="text-4xl font-black">{loading ? '...' : stats?.launchPlanning.total || 0}</p>
-                <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Go-To-Market</p>
-                <p className="text-xs text-muted-foreground/60">
-                   Active strategy roadmaps
+                <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Launch Plans</p>
+                <p className="text-[10px] text-muted-foreground/60 line-clamp-1">
+                   {loading ? '...' : stats?.launchPlanning.latestTitle || 'Strategic roadmaps'}
+                </p>
+              </div>
+            </PremiumCard>
+
+            {/* GTM Stats */}
+            <PremiumCard glow variant="default" className="relative group">
+              <div className="flex items-center justify-between mb-8">
+                <div className="p-3 bg-blue-500/10 rounded-2xl group-hover:bg-blue-500/20 transition-colors">
+                  <Target className="h-6 w-6 text-blue-500 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex gap-2">
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/go-to-market/history')}
+                    className="text-xs group-hover:text-white"
+                  >
+                    History
+                  </PremiumButton>
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/go-to-market')}
+                    className="text-xs group-hover:text-white bg-blue-500/10"
+                  >
+                    Go
+                  </PremiumButton>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-4xl font-black">{loading ? '...' : stats?.gtm.total || 0}</p>
+                <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">GTM Strategy</p>
+                <p className="text-[10px] text-muted-foreground/60 line-clamp-1">
+                   {loading ? '...' : stats?.gtm.latestTitle || 'Market entry vault'}
                 </p>
               </div>
             </PremiumCard>
@@ -221,19 +266,22 @@ export default function Dashboard() {
                       activity.type === 'problem' ? 'bg-purple-500/10' :
                       activity.type === 'idea' ? 'bg-blue-500/10' :
                       activity.type === 'launch' ? 'bg-orange-500/10' :
+                      activity.type === 'gtm' ? 'bg-blue-600/10' :
                       'bg-green-500/10'
                     }`}>
                       {activity.type === 'problem' && <BarChart3 className="h-5 w-5 text-purple-500" />}
                       {activity.type === 'idea' && <Lightbulb className="h-5 w-5 text-blue-500" />}
                       {activity.type === 'competitor' && <Target className="h-5 w-5 text-green-500" />}
                       {activity.type === 'launch' && <Rocket className="h-5 w-5 text-orange-500" />}
+                      {activity.type === 'gtm' && <Target className="h-5 w-5 text-blue-600" />}
                     </div>
                     <div className="flex-1">
                       <p className="text-base font-bold text-white/90">
                         {activity.type === 'problem' && 'Semantic Problem Analysis'}
                         {activity.type === 'idea' && 'AI Prototype Validation'}
                         {activity.type === 'competitor' && 'Competitor Landscape Map'}
-                        {activity.type === 'launch' && 'Strategy Optimization'}
+                        {activity.type === 'launch' && 'Launch Prep & Roadmap'}
+                        {activity.type === 'gtm' && 'Market Entry Strategy'}
                       </p>
                       <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
                         Processed {activity.count} {activity.count === 1 ? 'Entity' : 'Entities'} • {formatDate(activity.date)}
@@ -246,7 +294,8 @@ export default function Dashboard() {
                         if (activity.type === 'problem') navigate('/discovered-problems');
                         if (activity.type === 'idea') navigate('/ideas');
                         if (activity.type === 'competitor') navigate('/competitor-analysis/history');
-                        if (activity.type === 'launch') navigate('/launch-planning');
+                        if (activity.type === 'launch') navigate('/launch-planning/history');
+                        if (activity.type === 'gtm') navigate('/go-to-market/history');
                       }}
                       className="opacity-0 group-hover:opacity-100 h-9 w-9 rounded-lg"
                     >
@@ -275,7 +324,8 @@ export default function Dashboard() {
                 { label: 'Problem Repository', icon: FileText, route: '/discovered-problems', count: stats?.problemDiscovery.total },
                 { label: 'Invention Lab', icon: Lightbulb, route: '/ideas', count: stats?.ideas.total },
                 { label: 'Market Intelligence', icon: Target, route: '/competitor-analysis/history', count: stats?.competitorAnalysis.total },
-                { label: 'GTM Strategy', icon: Rocket, route: '/launch-planning', count: stats?.launchPlanning.total },
+                { label: 'Launch Roadmaps', icon: Rocket, route: '/launch-planning/history', count: stats?.launchPlanning.total },
+                { label: 'GTM Strategy', icon: Globe, route: '/go-to-market/history', count: stats?.gtm.total },
               ].map((link, idx) => (
                 <PremiumButton
                   key={idx}
