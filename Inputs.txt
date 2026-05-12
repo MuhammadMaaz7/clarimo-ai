@@ -1,91 +1,91 @@
-productivity tools for remote workers => 634 posts fetched => 1384 docs => 16:35 mins
-budgeting and personal finance management => 593 posts fetched => 564 docs =>
-managing personal finances effectively => 791 posts fetched => 741 docs => 478 docs to embed => 6:31 mins
-digital tools for managing money => 439 posts fetched => 422 docs => 283 docs to embed => 3:36 mins
-struggles with budgeting and saving => 558 posts fetched => 529 docs => 289 docs to embed => 4:00 mins
-developer productivity => 704 posts fetched => 633 docs => 603 docs to embed => 7:50 mins
-pain points in debugging and error tracking tools => 355 posts fetched => 304 docs => 304 docs to embed => 2:33 mins
-inefficiencies in group collaboration on e-learning platforms => 357 posts fetched => 312 docs => 258 docs to embed => 3:13 mins
+## Test Inputs for Customer Insights Module
 
-“limitations and pain points in AI-powered customer support systems”
+### 1. Side Hustles Platform
+**Startup Idea:**
+Platform that helps people start and manage side hustles by providing templates, tracking income/expenses, and connecting with mentors. Includes tax guidance and legal resources.
 
-“challenges companies face when integrating AI models into workflows”
+**Target Market (optional):**
+Working professionals aged 25-40 looking to earn extra income
 
-“problems users face with AI-generated content accuracy and bias”
+---
 
-“difficulties in managing AI data pipelines and training datasets”
+### 2. Remote Work Productivity App
+**Startup Idea:**
+Productivity app designed for remote workers with features like focus timers, virtual coworking rooms, and daily standup reminders. Integrates with Slack and Zoom.
 
-“lack of accessible AI tools for small businesses and startups”
+**Target Market (optional):**
+Remote workers and distributed teams
 
-“challenges small sellers face managing multiple online marketplaces”
+---
 
-“inefficiencies in cross-border online payments for freelancers”
+### 3. AI Fitness Coach
+**Startup Idea:**
+Home workout app with AI-powered personal trainer that creates custom workout plans, provides real-time form correction using phone camera, and adapts based on progress.
 
-“problems users face with financial management apps”
+**Target Market (optional):**
+Busy professionals who want to work out at home
 
-“lack of transparency in e-commerce return and refund processes”
+---
 
-“issues with fraud detection in online transactions”
+### 4. Budget Tracking App
+**Startup Idea:**
+Simple budgeting app that automatically categorizes expenses, sends spending alerts, and helps users save for specific goals. Connects to bank accounts via Plaid.
 
-“challenges students face finding personalized online learning resources”
+**Target Market (optional):**
+Young adults and millennials learning to manage finances
 
+---
 
-“problems educators face managing remote classrooms”
+### 5. Mental Health Journaling
+**Startup Idea:**
+Mental health journaling app with mood tracking, guided prompts, and AI-powered insights. Includes meditation exercises and connects users with therapists if needed.
 
-“issues with motivation and accountability in self-paced courses”
+**Target Market (optional):**
+People dealing with anxiety and stress
 
-“lack of interactive learning tools for technical subjects”
+---
 
+### 6. Freelancer Management Tool
+**Startup Idea:**
+All-in-one platform for freelancers to manage clients, track time, send invoices, and handle contracts. Includes automated payment reminders and expense tracking.
 
+**Target Market (optional):**
+Freelancers and independent contractors
 
+---
 
+### 7. Language Learning for Travelers
+**Startup Idea:**
+Language learning app focused on practical travel phrases with offline mode, pronunciation practice, and cultural tips. Uses spaced repetition for better retention.
 
-IDEA VALIDAITON TEST INPUTS
+**Target Market (optional):**
+Travelers and digital nomads
 
-Test Input 1 — AI Contract Summarizer for Law Firms
+---
 
-Idea Title
-AI Legal Contract Summarizer
+### 8. Pet Care Marketplace
+**Startup Idea:**
+On-demand pet care marketplace connecting pet owners with verified pet sitters, dog walkers, and veterinary professionals. Features real-time GPS tracking during walks and emergency vet consultations.
 
-Idea Description
-A platform that uses advanced AI models to automatically summarize long legal contracts into concise, easy-to-understand briefs. It highlights key risks, obligations, renewal terms, and unusual clauses. The tool is designed for law firms, small businesses, and procurement teams that need faster document review without compromising accuracy or compliance.
+**Target Market (optional):**
+Urban pet owners with busy schedules
 
-Problem Statement
-Legal teams spend hours reviewing repetitive and lengthy contracts, leading to slow turnaround times, missed deadlines, and high operational costs.
+---
 
-Solution Description
-The platform uploads legal documents, processes them using domain-trained AI, and generates clause-level summaries, risk flags, compliance notes, and side-by-side comparisons. It reduces review time by up to 70%, ensures consistency, and allows teams to collaborate on revisions with built-in version tracking and export features.
+## Tips for Testing:
 
-Target Market
-Law firms, procurement teams, and SMBs with frequent contract workflows.
+1. **Start with simpler ideas** (like #4 or #5) - they tend to have more focused communities
+2. **Use the target market field** - it helps narrow down relevant discussions
+3. **Wait for completion** - analysis takes 30-60 seconds
+4. **Check all 3 tabs** - Customer Segments, Key Insights, and Communities
+5. **Look for relevance** - Communities should be highly relevant to your idea
 
-Business Model (Optional)
-SaaS subscription priced per number of documents processed per month, plus enterprise onboarding fees.
+## Expected Results:
 
-Team Capabilities (Optional)
-Founders include a contract lawyer with 8 years of experience and an AI engineer specializing in NLP models for legal analysis.
-
-
-Test Input 2 — Restaurant Waste Optimization System
-
-Idea Title
-Smart Kitchen Waste Optimizer
-
-Idea Description
-A smart IoT and AI-driven platform that helps restaurants reduce food waste by tracking ingredient usage, predicting demand, and providing real-time alerts for overstocking or spoilage. The system integrates with point-of-sale data and supplier invoices to give a full picture of inventory efficiency.
-
-Problem Statement
-Restaurants lose thousands of dollars annually due to over-ordering, expired ingredients, and inaccurate demand forecasting, leading to unnecessary food waste and operational expenses.
-
-Solution Description
-The platform uses connected sensors, computer vision, and sales forecasting to predict ingredient consumption and suggest optimal ordering levels. It alerts managers when items approach expiration, highlights waste patterns, and provides actionable recommendations to cut waste and lower food costs.
-
-Target Market
-Restaurants, cafés, cloud kitchens, and small food chains.
-
-Business Model (Optional)
-Monthly subscription per location, with additional charges for IoT devices and premium analytics.
-
+- **Customer Segments**: 2-4 distinct groups with pain points and needs
+- **Key Insights**: Main problems, unmet needs, frustrations, and recommendations
+- **Communities**: Only highly relevant subreddits with "high" relevance badges
+- **Total Discussions**: 15-50 relevant discussions (after AI filtering)
 Team Capabilities (Optional)
 Team includes a former restaurant operations manager, a data scientist specializing in forecasting, and an IoT hardware engineer.
 

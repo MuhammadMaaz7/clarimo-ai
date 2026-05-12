@@ -30,6 +30,11 @@ from app.api.competitor_intelligence.routes_products import router as products_r
 from app.api.competitor_intelligence.routes_analyses import router as analyses_router
 from app.api.competitor_intelligence.routes_production import router as production_router
 
+# Module 4: Customer Insights routes
+from app.api.customer_insights.routes_analysis import router as customer_insights_analysis_router
+from app.api.customer_insights.routes_communities import router as customer_insights_communities_router
+from app.api.customer_insights.routes_segments import router as customer_insights_segments_router
+
 # Module 5: Launch Planning Assistant routes
 from app.api.launch_planning.routes_plan import router as launch_plan_router
 
@@ -67,6 +72,9 @@ app.include_router(shared_router, prefix="/api")  # Public shared validations (n
 app.include_router(products_router, prefix="/api")
 app.include_router(analyses_router, prefix="/api")
 app.include_router(production_router, prefix="/api")  # Production-ready competitor analysis
+app.include_router(customer_insights_analysis_router, prefix="/api")
+app.include_router(customer_insights_communities_router, prefix="/api")
+app.include_router(customer_insights_segments_router, prefix="/api")
 app.include_router(launch_plan_router, prefix="/api")
 app.include_router(gtm_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")

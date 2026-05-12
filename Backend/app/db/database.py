@@ -23,6 +23,12 @@ launch_plans_collection = db["launch_plans"]
 # GTM Strategy Module collections
 gtm_strategies_collection = db["gtm_strategies"]
 
+# Customer Insights Module collections
+customer_insights_analyses_collection = db["customer_insights_analyses"]
+customer_raw_discussions_collection = db["customer_raw_discussions"]
+audience_segments_collection = db["audience_segments"]
+community_insights_collection = db["community_insights"]
+
 # User collection indexes
 users_collection.create_index("email", unique=True)
 
@@ -68,3 +74,17 @@ launch_plans_collection.create_index([("status", 1), ("created_at", 1)])
 # GTM strategies collection indexes
 gtm_strategies_collection.create_index("gtm_id", unique=True)
 gtm_strategies_collection.create_index([("user_id", 1), ("created_at", -1)])
+
+# Customer Insights Module indexes
+customer_insights_analyses_collection.create_index("analysis_id", unique=True)
+customer_insights_analyses_collection.create_index([("user_id", 1), ("created_at", -1)])
+customer_insights_analyses_collection.create_index([("status", 1), ("created_at", 1)])
+
+customer_raw_discussions_collection.create_index([("analysis_id", 1), ("source", 1)])
+customer_raw_discussions_collection.create_index("discussion_id")
+
+audience_segments_collection.create_index([("analysis_id", 1)])
+audience_segments_collection.create_index("segment_id", unique=True)
+
+community_insights_collection.create_index([("analysis_id", 1), ("source", 1)])
+community_insights_collection.create_index([("analysis_id", 1), ("engagement_score", -1)])

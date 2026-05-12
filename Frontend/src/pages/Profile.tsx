@@ -1,16 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../hooks/useProfile';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { 
+  User, Mail, Settings, History, CheckCircle, 
+  Target, LogOut, ShieldCheck, Rocket, Layers,
+  ChevronRight, Activity, Users
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { PremiumCard } from '../components/ui/premium/PremiumCard';
 import { PremiumButton } from '../components/ui/premium/PremiumButton';
-import { Label } from '../components/ui/label';
-import { Input } from '../components/ui/input';
-import { 
-  User, Mail, Settings, History, CheckCircle, 
-  Target, LogOut, ShieldCheck, Rocket, Layers,
-  ChevronRight, Activity
-} from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
 
 const Profile = () => {
@@ -173,14 +175,28 @@ const Profile = () => {
                     count: stats?.problemDiscovery.total || 0, 
                     icon: Layers, 
                     color: 'text-blue-400', 
-                    link: () => navigate('/problem-discovery/history') 
+                    link: () => navigate('/discovered-problems') 
                   },
                   { 
-                    name: 'GTM Strategy Vault', 
-                    count: stats?.gtm.total || 0, 
+                    name: 'Idea Validation', 
+                    count: stats?.ideas.total || 0, 
+                    icon: CheckCircle, 
+                    color: 'text-yellow-400', 
+                    link: () => navigate('/ideas') 
+                  },
+                  { 
+                    name: 'Competitor Analysis', 
+                    count: stats?.competitorAnalysis.total || 0, 
                     icon: Target, 
-                    color: 'text-purple-400', 
-                    link: () => navigate('/go-to-market/history') 
+                    color: 'text-red-400', 
+                    link: () => navigate('/competitor-analysis/history') 
+                  },
+                  { 
+                    name: 'Customer Insights', 
+                    count: 0, 
+                    icon: Users, 
+                    color: 'text-cyan-400', 
+                    link: () => navigate('/customer-insights/history') 
                   },
                   { 
                     name: 'Launch Planning roadmaps', 
@@ -190,11 +206,11 @@ const Profile = () => {
                     link: () => navigate('/launch-planning/history') 
                   },
                   { 
-                    name: 'Valuable Competitor Intel', 
-                    count: stats?.competitorAnalysis.total || 0, 
+                    name: 'GTM Strategy Vault', 
+                    count: stats?.gtm.total || 0, 
                     icon: Activity, 
                     color: 'text-green-400', 
-                    link: () => navigate('/competitor-analysis/history') 
+                    link: () => navigate('/go-to-market/history') 
                   }
                 ].map((item, i) => (
                   <motion.div 
@@ -227,7 +243,7 @@ const Profile = () => {
                <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Quick Actions</h3>
                <div className="space-y-3">
                   {[
-                    { label: 'Intelligence Pipeline', icon: Target, path: '/ideas', color: 'text-blue-400' },
+                    { label: 'Intelligence Pipeline', icon: CheckCircle, path: '/ideas', color: 'text-blue-400' },
                     { label: 'Market Disruptions', icon: History, path: '/discovered-problems', color: 'text-green-400' },
                     { label: 'New Launch Plan', icon: Rocket, path: '/launch-planning', color: 'text-orange-400' },
                     { label: 'New GTM strategy', icon: Target, path: '/go-to-market', color: 'text-purple-400' }

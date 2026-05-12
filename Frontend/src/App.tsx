@@ -41,6 +41,9 @@ const LaunchPlanning = lazy(() => import("./pages/LaunchPlanning"));
 const LaunchPlanningHistory = lazy(() => import("./pages/LaunchPlanningHistory"));
 const GoToMarket = lazy(() => import("./pages/GoToMarket"));
 const GoToMarketHistory = lazy(() => import("./pages/GoToMarketHistory"));
+const CustomerInsights = lazy(() => import("./pages/CustomerInsights"));
+const CustomerInsightsHistory = lazy(() => import("./pages/CustomerInsightsHistory"));
+const CustomerInsightsDetail = lazy(() => import("./pages/CustomerInsightsDetail"));
 
 const queryClient = new QueryClient();
 
@@ -120,9 +123,10 @@ const AppContent = () => {
                     <Route path="/idea-validation" element={<ProtectedRoute><IdeaList /></ProtectedRoute>} />
                     <Route path="/competitor-analysis" element={<ProtectedRoute><CompetitorAnalysis /></ProtectedRoute>} />
                     <Route path="/competitor-analysis/history" element={<ProtectedRoute><CompetitorAnalysisHistory /></ProtectedRoute>} />
-                    <Route path="/competitor-analysis/history" element={<ProtectedRoute><CompetitorAnalysisHistory /></ProtectedRoute>} />
                     <Route path="/competitor-analysis/:productId" element={<ProtectedRoute><CompetitorAnalysisDetail /></ProtectedRoute>} />
-                    <Route path="/customer-finding" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
+                    <Route path="/customer-insights" element={<ProtectedRoute><CustomerInsights /></ProtectedRoute>} />
+                    <Route path="/customer-insights/history" element={<ProtectedRoute><CustomerInsightsHistory /></ProtectedRoute>} />
+                    <Route path="/customer-insights/:analysisId" element={<ProtectedRoute><CustomerInsightsDetail /></ProtectedRoute>} />
                     <Route path="/launch-planning" element={<ProtectedRoute><LaunchPlanning /></ProtectedRoute>} />
                     <Route path="/launch-planning/history" element={<ProtectedRoute><LaunchPlanningHistory /></ProtectedRoute>} />
                     <Route path="/go-to-market" element={<ProtectedRoute><GoToMarket /></ProtectedRoute>} />

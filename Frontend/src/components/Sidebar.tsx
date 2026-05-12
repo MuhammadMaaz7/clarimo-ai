@@ -19,7 +19,7 @@ const navigation = [
   { name: 'Problem Discovery', href: '/problem-discovery', icon: Sparkles, color: 'text-purple-300', bg: 'bg-purple-500/15', activeBg: 'bg-purple-500/20' },
   { name: 'Idea Validation', href: '/ideas/new', icon: Lightbulb, color: 'text-yellow-300', bg: 'bg-yellow-500/15', activeBg: 'bg-yellow-500/20' },
   { name: 'Competitor Analysis', href: '/competitor-analysis', icon: Target, color: 'text-red-300', bg: 'bg-red-500/15', activeBg: 'bg-red-500/20' },
-  { name: 'Customer Finding', href: '/customer-finding', icon: Users, color: 'text-cyan-300', bg: 'bg-cyan-500/15', activeBg: 'bg-cyan-500/20' },
+  { name: 'Customer Insights', href: '/customer-insights', icon: Users, color: 'text-cyan-300', bg: 'bg-cyan-500/15', activeBg: 'bg-cyan-500/20' },
   { name: 'Launch Planning', href: '/launch-planning', icon: Rocket, color: 'text-orange-300', bg: 'bg-orange-500/15', activeBg: 'bg-orange-500/20' },
   { name: 'Go-to-Market', href: '/go-to-market', icon: Megaphone, color: 'text-green-300', bg: 'bg-green-500/15', activeBg: 'bg-green-500/20' },
 ];
@@ -129,7 +129,7 @@ const Sidebar = () => {
               'text-[10px] font-black uppercase tracking-[0.15em] text-fuchsia-200/20 text-center transition-opacity',
               !isOpen && 'lg:hidden'
             )}>
-              © 2025 Clarimo AI
+              © 2026 Clarimo AI
             </p>
           </div>
         </div>
