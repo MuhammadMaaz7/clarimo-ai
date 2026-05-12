@@ -154,7 +154,7 @@ const Signup = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 pt-2 pb-1">
+            {/* <div className="flex items-center space-x-2 pt-2 pb-1">
               <Checkbox
                 id="terms"
                 checked={termsAccepted}
@@ -170,7 +170,7 @@ const Signup = () => {
                   Terms & Conditions
                 </span>
               </label>
-            </div>
+            </div> */}
 
             <Button
               type="submit"
