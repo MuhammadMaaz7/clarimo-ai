@@ -110,14 +110,34 @@ export default function IdeaValidation() {
                   onRetry={() => startValidation()}
                 />
               </motion.div>
-            ) : validation?.status === 'completed' && validation.report_data ? (
+            ) : validation?.status === 'completed' && validation.overall_score ? (
               <motion.div
                 key="report"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
                 <ValidationReportView
-                  report={validation.report_data}
+                  report={{
+                    validation_id: validation.validation_id,
+                    idea_id: validation.idea_id,
+                    idea_title: idea.title,
+                    overall_score: validation.overall_score,
+                    validation_date: validation.created_at,
+                    // Spread individual scores from validation root
+                    problem_clarity: validation.individual_scores?.problem_clarity,
+                    market_demand: validation.individual_scores?.market_demand,
+                    solution_fit: validation.individual_scores?.solution_fit,
+                    differentiation: validation.individual_scores?.differentiation,
+                    // Spread report data fields
+                    strengths: validation.report_data?.strengths || [],
+                    weaknesses: validation.report_data?.weaknesses || [],
+                    critical_recommendations: validation.report_data?.recommendations || [],
+                    radar_chart_data: {},
+                    score_distribution: {},
+                    executive_summary: validation.report_data?.executive_summary,
+                    detailed_analysis: validation.report_data?.detailed_analysis,
+                    next_steps: validation.report_data?.next_steps || [],
+                  }}
                   onExportJson={() => exportReport('json')}
                   onExportPdf={() => exportReport('pdf')}
                   onShare={() => {}}

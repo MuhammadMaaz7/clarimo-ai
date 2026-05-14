@@ -20,6 +20,13 @@ interface DashboardStats {
     latest?: string | null;
     latestTitle?: string | null;
   };
+  customerInsights: {
+    total: number;
+    totalSegments: number;
+    totalCommunities: number;
+    latest?: string | null;
+    latestTitle?: string | null;
+  };
   launchPlanning: {
     total: number;
     latest?: string | null;
@@ -33,7 +40,7 @@ interface DashboardStats {
 }
 
 interface Activity {
-  type: 'problem' | 'idea' | 'competitor' | 'launch' | 'gtm';
+  type: 'problem' | 'idea' | 'competitor' | 'customer' | 'launch' | 'gtm';
   count: number;
   date?: string | null;
 }
@@ -50,11 +57,15 @@ export function useDashboardStats() {
       setLoading(true);
       setError(null);
 
+      // Import customerInsightsApi
+      const { customerInsightsApi } = await import('../services/customerInsightsApi');
+
       // Fetch stats from all modules using settled promises to ensure partial success works
-      const [problemStats, ideaStats, competitorStats, launchStats, gtmStats] = await Promise.allSettled([
+      const [problemStats, ideaStats, competitorStats, customerStats, launchStats, gtmStats] = await Promise.allSettled([
         api.painPoints.getStats(),
         api.ideas.getAll(),
         api.competitorAnalyses.list(),
+        customerInsightsApi.getHistory(),
         api.launchPlanning.getHistory(user?.id || ''),
         api.gtm.getHistory(user?.id || ''),
       ]);
@@ -63,6 +74,7 @@ export function useDashboardStats() {
         problemDiscovery: { total: 0, totalProblems: 0 },
         ideas: { total: 0, validated: 0 },
         competitorAnalysis: { total: 0, totalCompetitors: 0 },
+        customerInsights: { total: 0, totalSegments: 0, totalCommunities: 0 },
         launchPlanning: { total: 0 },
         gtm: { total: 0 },
       };
@@ -100,6 +112,19 @@ export function useDashboardStats() {
           latest: analyses.length > 0 ? analyses[0].created_at : undefined,
         };
         if (analyses.length > 0) activities.push({ type: 'competitor', count: analyses.length, date: analyses[0].created_at });
+      }
+
+      // Process customer insights stats
+      if (customerStats.status === 'fulfilled' && Array.isArray(customerStats.value)) {
+        const analyses = customerStats.value;
+        dashboardStats.customerInsights = {
+          total: analyses.length,
+          totalSegments: analyses.reduce((sum: number, a: any) => sum + (a.segments_found || 0), 0),
+          totalCommunities: analyses.reduce((sum: number, a: any) => sum + (a.communities_found || 0), 0),
+          latest: analyses.length > 0 ? analyses[0].created_at : undefined,
+          latestTitle: analyses.length > 0 ? analyses[0].startup_idea : undefined,
+        };
+        if (analyses.length > 0) activities.push({ type: 'customer', count: analyses.length, date: analyses[0].created_at });
       }
 
       // Process launch planning stats
@@ -150,6 +175,7 @@ export function useDashboardStats() {
     totalActions: (stats?.problemDiscovery.total || 0) + 
                   (stats?.ideas.total || 0) + 
                   (stats?.competitorAnalysis.total || 0) + 
+                  (stats?.customerInsights.total || 0) +
                   (stats?.launchPlanning.total || 0) +
                   (stats?.gtm.total || 0),
   };

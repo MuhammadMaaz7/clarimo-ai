@@ -24,6 +24,7 @@ from app.api.problem_discovery.routes_ranking import router as ranking_router
 from app.api.idea_validation.routes_ideas import router as ideas_router
 from app.api.idea_validation.routes_validations import router as validations_router
 from app.api.idea_validation.routes_shared import router as shared_router
+from app.api.idea_validation.routes_debug import router as debug_router
 
 # Module 3: Competitor Analysis routes
 from app.api.competitor_intelligence.routes_products import router as products_router
@@ -69,6 +70,7 @@ app.include_router(processing_status_router, prefix="/api")
 app.include_router(ideas_router, prefix="/api")
 app.include_router(validations_router, prefix="/api")
 app.include_router(shared_router, prefix="/api")  # Public shared validations (no auth required)
+app.include_router(debug_router, prefix="/api")  # Debug endpoints for troubleshooting
 app.include_router(products_router, prefix="/api")
 app.include_router(analyses_router, prefix="/api")
 app.include_router(production_router, prefix="/api")  # Production-ready competitor analysis

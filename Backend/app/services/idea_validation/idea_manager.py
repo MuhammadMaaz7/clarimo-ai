@@ -77,6 +77,7 @@ class IdeaManager:
         """
         from app.db.database import validation_results_collection
         from app.db.models.idea_model import LatestValidationSummary
+        from app.core.logging import logger
         
         if idea.latest_validation_id:
             # Fetch the latest validation
@@ -85,15 +86,25 @@ class IdeaManager:
             })
             
             if validation:
-                # Only populate if validation is completed and has results
                 status = validation.get("status", "")
-                if status == "completed" and validation.get("overall_score") is not None:
+                overall_score = validation.get("overall_score")
+                
+                logger.debug(f"Populating validation for idea {idea.id}: status={status}, score={overall_score}, type={type(overall_score)}")
+                
+                # Populate for all statuses, not just completed
+                # This allows frontend to show in_progress, pending, and failed validations
+                try:
                     idea.latest_validation = LatestValidationSummary(
                         validation_id=validation["validation_id"],
-                        overall_score=validation.get("overall_score", 0.0),
-                        status=validation["status"],
+                        overall_score=overall_score if overall_score is not None else 0.0,
+                        status=status,
                         created_at=validation["created_at"]
                     )
+                    logger.debug(f"Successfully populated latest_validation for idea {idea.id}")
+                except Exception as e:
+                    logger.error(f"Failed to populate latest_validation for idea {idea.id}: {str(e)}")
+            else:
+                logger.warning(f"Validation {idea.latest_validation_id} not found for idea {idea.id}")
         
         return idea
     

@@ -3,7 +3,8 @@
  * Simplified Standalone Experience
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -22,7 +23,10 @@ import { ModuleHeader } from '../../components/ui/ModuleHeader';
 
 export default function LaunchPlanning() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const planId = searchParams.get('id');
   const [loading, setLoading] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
   const [result, setResult] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -34,6 +38,26 @@ export default function LaunchPlanning() {
     target_market: '',
     expected_timeline_months: 6,
   });
+
+  // Load existing plan if ID is provided
+  useEffect(() => {
+    if (planId) {
+      loadExistingPlan(planId);
+    }
+  }, [planId]);
+
+  const loadExistingPlan = async (id: string) => {
+    try {
+      setLoadingExisting(true);
+      const plan = await api.launchPlanning.getPlan(id);
+      setResult(plan);
+    } catch (error: any) {
+      console.error('Failed to load launch plan:', error);
+      toast.error('Failed to load launch plan');
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.idea_description || formData.idea_description.trim().length < 15) {
@@ -57,6 +81,22 @@ export default function LaunchPlanning() {
       setLoading(false);
     }
   };
+
+  // Show loading state when loading existing plan
+  if (loadingExisting) {
+    return (
+      <div className="responsive-container-dashboard">
+        <div className="max-w-4xl mx-auto">
+          <PremiumCard variant="default">
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-muted-foreground">Loading launch plan...</p>
+            </div>
+          </PremiumCard>
+        </div>
+      </div>
+    );
+  }
 
   if (result) return <LaunchPlanResult plan={result} onReset={() => setResult(null)} />;
 

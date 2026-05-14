@@ -95,7 +95,7 @@ export default function ValidationReportView({
               </div>
               <Badge variant="outline" className="gap-1">
                 <Eye className="h-3 w-3" />
-                ID: {report.validation_id.slice(0, 8)}
+                ID: {report.validation_id?.slice(0, 8) || 'N/A'}
               </Badge>
             </div>
           </div>

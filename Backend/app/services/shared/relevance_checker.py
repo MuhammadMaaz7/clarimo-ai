@@ -20,7 +20,7 @@ class RelevanceChecker:
         Returns: (is_relevant, error_message)
         """
         if not input_text or len(input_text.strip()) < 10:
-            return False, "Input is too short to be a valid business description."
+            return False, "Input is too short. Please provide at least 10 characters describing your business idea or problem."
             
         prompt = f"""You are a startup validation bot. Your job is to detect if a given text is a legitimate description of a startup, product, business idea, or market problem.
         
@@ -44,7 +44,7 @@ class RelevanceChecker:
         Respond ONLY in the following JSON format:
         {{
             "is_relevant": true/false,
-            "reason": "Clear explanation if rejected (e.g., 'This appears to be gibberish' or 'This is an unrelated general knowledge query'), or 'valid' if accepted"
+            "category": "gibberish" | "non_business" | "general_info" | "personal" | "valid"
         }}"""
         
         try:
@@ -55,7 +55,23 @@ class RelevanceChecker:
                 max_tokens=150
             )
             result = json.loads(response)
-            return result.get("is_relevant", True), result.get("reason", "Invalid input.")
+            is_relevant = result.get("is_relevant", True)
+            category = result.get("category", "unknown")
+            
+            # Map categories to consistent, user-friendly error messages
+            if not is_relevant:
+                error_messages = {
+                    "gibberish": "Invalid input. Please enter a meaningful business idea or problem description.",
+                    "non_business": "Invalid input. Please describe a business idea, product, or market problem.",
+                    "general_info": "Invalid input. Please describe a business idea or startup concept, not a general question.",
+                    "personal": "Invalid input. Please describe a business idea rather than personal information.",
+                    "unknown": "Invalid input. Please provide a clear description of your business idea or problem."
+                }
+                error_message = error_messages.get(category, error_messages["unknown"])
+                return False, error_message
+            
+            return True, "valid"
+            
         except Exception as e:
             logger.error(f"Relevance validation failed: {e}")
             # Fallback to true to avoid blocking users on API failure, 

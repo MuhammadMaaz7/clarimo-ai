@@ -1,13 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useAsyncAction } from './useAsyncAction';
+import { Score } from '../types/validation';
 
 interface ValidationResult {
   validation_id: string;
   idea_id: string;
   user_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
   overall_score: number | null;
+  individual_scores: {
+    problem_clarity?: Score;
+    market_demand?: Score;
+    solution_fit?: Score;
+    differentiation?: Score;
+  } | null;
   report_data: any | null;
   created_at: string;
   error_message: string | null;
@@ -32,15 +39,37 @@ export function useIdeaValidation(ideaId?: string) {
     successMessage: 'Action priority established'
   });
 
-  const fetchIdea = useCallback(async (id: string) => {
-    const result = await execFetch(() => api.ideas.getById(id));
-    if (result) setIdea(result);
-  }, [execFetch]);
-
   const fetchValidation = useCallback(async (validationId: string) => {
     const result = await execStatus(() => api.validations.getResult(validationId));
-    if (result) setValidation(result);
+    if (result) {
+      console.log('✓ Fetched validation:', {
+        validation_id: result.validation_id,
+        status: result.status,
+        overall_score: result.overall_score,
+        has_individual_scores: !!result.individual_scores,
+        has_report_data: !!result.report_data,
+      });
+      setValidation(result);
+    }
   }, [execStatus]);
+
+  const fetchIdea = useCallback(async (id: string) => {
+    const result = await execFetch(() => api.ideas.getById(id));
+    if (result) {
+      console.log('✓ Fetched idea:', {
+        id: result.id,
+        title: result.title,
+        has_latest_validation: !!result.latest_validation,
+        latest_validation_id: result.latest_validation?.validation_id,
+      });
+      setIdea(result);
+      // If the idea has a latest validation, fetch it
+      if (result.latest_validation?.validation_id) {
+        console.log('→ Fetching validation:', result.latest_validation.validation_id);
+        fetchValidation(result.latest_validation.validation_id);
+      }
+    }
+  }, [execFetch, fetchValidation]);
 
   const pollStatus = useCallback(async (validationId: string) => {
     try {
@@ -105,7 +134,7 @@ export function useIdeaValidation(ideaId?: string) {
 
   useEffect(() => {
     let interval: any;
-    if (validation?.validation_id && (status?.status === 'pending' || status?.status === 'processing')) {
+    if (validation?.validation_id && (status?.status === 'pending' || status?.status === 'in_progress')) {
       interval = setInterval(async () => {
         const done = await pollStatus(validation.validation_id);
         if (done) clearInterval(interval);

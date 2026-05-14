@@ -14,6 +14,7 @@ from app.db.models.customer_insights_model import (
 
 # Import services
 from app.services.customer_insights.analysis_manager import analysis_manager
+from app.services.shared.relevance_checker import relevance_checker
 
 # Import dependencies
 from app.core.dependencies import get_current_user
@@ -44,7 +45,29 @@ async def start_analysis(
         
         logger.info(f"Starting customer insights analysis for user {user_id}")
         
-        # Start analysis
+        # STEP 1: Validate input relevance (same approach as GTM and Launch Planning)
+        logger.info(f"Validating input: {request.startup_idea[:50]}...")
+        
+        # Combine startup_idea and target_market for validation
+        validation_text = request.startup_idea
+        if request.target_market:
+            validation_text += f" | Target Market: {request.target_market}"
+        
+        is_valid, reason = await relevance_checker.validate_relevance(
+            input_text=validation_text,
+            context_type="customer insights analysis"
+        )
+        
+        if not is_valid:
+            logger.warning(f"Customer insights request rejected: {reason}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=reason
+            )
+        
+        logger.info(f"Input validation passed: {reason}")
+        
+        # STEP 2: Start analysis
         result = await analysis_manager.start_analysis(
             user_id=user_id,
             startup_idea=request.startup_idea,
@@ -250,4 +273,57 @@ async def delete_analysis(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete analysis: {str(e)}"
+        )
+
+
+@router.post("/validate-input", response_model=dict)
+async def validate_input(
+    request: CustomerInsightsRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Validate user input without starting analysis
+    
+    Useful for frontend validation before submitting the full request.
+    Checks if the startup idea and target market are valid and meaningful.
+    Uses the same validation logic as GTM Strategy and Launch Planning modules.
+    
+    - **startup_idea**: Startup idea or problem to validate
+    - **target_market**: Optional target market to validate
+    
+    Returns:
+        Dictionary with validation result:
+        {
+            "success": true,
+            "is_valid": true/false,
+            "reason": "Explanation",
+            "message": "Validation message"
+        }
+    """
+    try:
+        logger.info(f"Validating input for user {current_user.id}")
+        
+        # Combine startup_idea and target_market for validation
+        validation_text = request.startup_idea
+        if request.target_market:
+            validation_text += f" | Target Market: {request.target_market}"
+        
+        # Use the same relevance checker as GTM and Launch Planning
+        is_valid, reason = await relevance_checker.validate_relevance(
+            input_text=validation_text,
+            context_type="customer insights analysis"
+        )
+        
+        return {
+            "success": True,
+            "is_valid": is_valid,
+            "reason": reason,
+            "message": "Input is valid and ready for analysis" if is_valid else "Input validation failed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to validate input: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate input: {str(e)}"
         )

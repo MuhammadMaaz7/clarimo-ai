@@ -193,7 +193,7 @@ const Profile = () => {
                   },
                   { 
                     name: 'Customer Insights', 
-                    count: 0, 
+                    count: stats?.customerInsights.total || 0, 
                     icon: Users, 
                     color: 'text-cyan-400', 
                     link: () => navigate('/customer-insights/history') 

@@ -3,11 +3,12 @@
  * Premium Dark UI — brand purple palette.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Megaphone } from 'lucide-react';
+import { Megaphone, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -18,7 +19,10 @@ import { ModuleHeader } from '../../components/ui/ModuleHeader';
 
 export default function GoToMarket() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const gtmId = searchParams.get('id');
   const [loading, setLoading] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
   const [result, setResult] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -29,6 +33,26 @@ export default function GoToMarket() {
     budget: 5000,
     launch_date_weeks: 12,
   });
+
+  // Load existing strategy if ID is provided
+  useEffect(() => {
+    if (gtmId) {
+      loadExistingStrategy(gtmId);
+    }
+  }, [gtmId]);
+
+  const loadExistingStrategy = async (id: string) => {
+    try {
+      setLoadingExisting(true);
+      const strategy = await api.gtm.getStrategy(id);
+      setResult(strategy);
+    } catch (error: any) {
+      console.error('Failed to load GTM strategy:', error);
+      toast.error('Failed to load GTM strategy');
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.startup_description || formData.startup_description.trim().length < 15) {
@@ -48,7 +72,7 @@ export default function GoToMarket() {
     try {
       const response = await api.gtm.createStrategy({ ...formData, user_id: user?.id });
       setResult(response);
-      toast.success('GTM strategy generated!');
+      toast.success('Go-to-Market strategy generated!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to generate GTM strategy. Please try again.');
       console.error(err);
@@ -56,6 +80,22 @@ export default function GoToMarket() {
       setLoading(false);
     }
   };
+
+  // Show loading state when loading existing strategy
+  if (loadingExisting) {
+    return (
+      <div className="responsive-container-dashboard">
+        <div className="max-w-4xl mx-auto">
+          <PremiumCard variant="default">
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-muted-foreground">Loading GTM strategy...</p>
+            </div>
+          </PremiumCard>
+        </div>
+      </div>
+    );
+  }
 
   if (result) return <GTMResult strategy={result} onReset={() => setResult(null)} />;
 

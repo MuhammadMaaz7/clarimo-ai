@@ -127,6 +127,7 @@ export function useCompetitorAnalysis() {
 
   return {
     analysisResult,
+    setAnalysisResult,
     isAnalyzing: loading,
     productName,
     setProductName,

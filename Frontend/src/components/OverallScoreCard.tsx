@@ -24,11 +24,19 @@ interface OverallScoreCardProps {
 }
 
 export default function OverallScoreCard({ score, previousScore }: OverallScoreCardProps) {
-  const scoreColor = getScoreColor(score);
-  const scoreLabel = getScoreLabel(score);
+  // Safety check: ensure score is a valid number
+  const validScore = typeof score === 'number' && !isNaN(score) ? score : 0;
+  
+  // Log for debugging
+  if (validScore === 0) {
+    console.warn('OverallScoreCard: Score is 0 or invalid', { score, validScore });
+  }
+  
+  const scoreColor = getScoreColor(validScore);
+  const scoreLabel = getScoreLabel(validScore);
   
   // Calculate score change if previous score is provided
-  const scoreDelta = previousScore !== undefined ? score - previousScore : null;
+  const scoreDelta = previousScore !== undefined ? validScore - previousScore : null;
   const hasImproved = scoreDelta !== null && scoreDelta > 0;
   const hasDeclined = scoreDelta !== null && scoreDelta < 0;
   const isUnchanged = scoreDelta !== null && scoreDelta === 0;
@@ -76,13 +84,13 @@ export default function OverallScoreCard({ score, previousScore }: OverallScoreC
 
             {/* Icon */}
             <div className="mb-4 relative z-10">
-              {getScoreIcon(score)}
+              {getScoreIcon(validScore)}
             </div>
 
             {/* Score Value */}
             <div className="text-center relative z-10">
               <div className="text-6xl font-bold mb-2">
-                {score.toFixed(1)}
+                {validScore.toFixed(1)}
               </div>
               <div className="text-2xl font-semibold opacity-90 mb-1">
                 / 5.0
@@ -121,7 +129,7 @@ export default function OverallScoreCard({ score, previousScore }: OverallScoreC
           <div className="p-8 flex flex-col justify-center">
             <h3 className="text-2xl font-bold mb-4">Overall Assessment</h3>
             <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-              {getInterpretation(score)}
+              {getInterpretation(validScore)}
             </p>
 
             {/* Score Breakdown Visual */}

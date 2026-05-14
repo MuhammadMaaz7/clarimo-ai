@@ -3,7 +3,8 @@
  * Unified Standalone Experience
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
@@ -14,12 +15,18 @@ import { PremiumCard } from '../components/ui/premium/PremiumCard';
 import { PremiumButton } from '../components/ui/premium/PremiumButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleHeader } from '../components/ui/ModuleHeader';
+import { UnifiedLoadingSpinner } from '../components/shared';
+import api from '../lib/api';
 
 export default function CompetitorAnalysis() {
+  const [searchParams] = useSearchParams();
+  const analysisId = searchParams.get('id');
   const [resultsTab, setResultsTab] = useState('competitors');
+  const [loadingExisting, setLoadingExisting] = useState(false);
   
   const {
     analysisResult,
+    setAnalysisResult,
     isAnalyzing,
     productName,
     setProductName,
@@ -37,6 +44,25 @@ export default function CompetitorAnalysis() {
     reset,
   } = useCompetitorAnalysis();
 
+  // Load existing analysis if ID is provided
+  useEffect(() => {
+    if (analysisId) {
+      loadExistingAnalysis(analysisId);
+    }
+  }, [analysisId]);
+
+  const loadExistingAnalysis = async (id: string) => {
+    try {
+      setLoadingExisting(true);
+      const result = await api.competitorAnalyses.getById(id);
+      setAnalysisResult(result);
+    } catch (error: any) {
+      console.error('Failed to load analysis:', error);
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!productName.trim() || !description.trim() || features.filter(f => f.trim()).length === 0) {
       return;
@@ -48,6 +74,19 @@ export default function CompetitorAnalysis() {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
+
+  // Show loading state when loading existing analysis
+  if (loadingExisting) {
+    return (
+      <div className="responsive-container-dashboard">
+        <div className="max-w-6xl mx-auto">
+          <PremiumCard variant="default">
+            <UnifiedLoadingSpinner text="Loading analysis..." />
+          </PremiumCard>
+        </div>
+      </div>
+    );
+  }
 
   // Show Results View
   if (analysisResult) {

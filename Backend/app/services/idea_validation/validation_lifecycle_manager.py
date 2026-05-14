@@ -254,13 +254,17 @@ class ValidationLifecycleManager:
             "error_message": None
         }
         
-        self.validations_collection.update_one(
+        # Update validation record
+        validation_update_result = self.validations_collection.update_one(
             {"validation_id": validation_id},
             {"$set": update_data}
         )
         
+        if validation_update_result.modified_count == 0:
+            logger.warning(f"Validation {validation_id} was not updated (may already be completed)")
+        
         # Update the idea with latest validation info
-        ideas_collection.update_one(
+        idea_update_result = ideas_collection.update_one(
             {"id": result.idea_id},
             {
                 "$set": {
@@ -271,7 +275,15 @@ class ValidationLifecycleManager:
             }
         )
         
-        logger.info(f"Updated validation {validation_id} to COMPLETED and updated idea {result.idea_id}")
+        if idea_update_result.modified_count == 0:
+            logger.error(f"Failed to update idea {result.idea_id} with validation {validation_id}")
+        else:
+            logger.info(f"Updated validation {validation_id} to COMPLETED and updated idea {result.idea_id}")
+            
+            # Verify the update
+            updated_idea = ideas_collection.find_one({"id": result.idea_id})
+            if updated_idea:
+                logger.info(f"Idea {result.idea_id} now has validation_count={updated_idea.get('validation_count')}, latest_validation_id={updated_idea.get('latest_validation_id')}")
     
     async def _update_validation_failed(
         self,

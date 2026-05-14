@@ -36,7 +36,6 @@ const IdeaVersionComparison = lazy(() => import("./pages/IdeaVersionComparison")
 const IdeaComparison = lazy(() => import("./pages/IdeaComparison"));
 const CompetitorAnalysis = lazy(() => import("./pages/CompetitorAnalysis"));
 const CompetitorAnalysisHistory = lazy(() => import("./pages/CompetitorAnalysisHistory"));
-const CompetitorAnalysisDetail = lazy(() => import("./pages/CompetitorAnalysisDetail"));
 const LaunchPlanning = lazy(() => import("./pages/LaunchPlanning"));
 const LaunchPlanningHistory = lazy(() => import("./pages/LaunchPlanningHistory"));
 const GoToMarket = lazy(() => import("./pages/GoToMarket"));
@@ -122,8 +121,8 @@ const AppContent = () => {
                     <Route path="/ideas/:ideaId/history/compare" element={<ProtectedRoute><IdeaVersionComparison /></ProtectedRoute>} />
                     <Route path="/idea-validation" element={<ProtectedRoute><IdeaList /></ProtectedRoute>} />
                     <Route path="/competitor-analysis" element={<ProtectedRoute><CompetitorAnalysis /></ProtectedRoute>} />
+                    <Route path="/competitor-analysis/new" element={<ProtectedRoute><CompetitorAnalysis /></ProtectedRoute>} />
                     <Route path="/competitor-analysis/history" element={<ProtectedRoute><CompetitorAnalysisHistory /></ProtectedRoute>} />
-                    <Route path="/competitor-analysis/:productId" element={<ProtectedRoute><CompetitorAnalysisDetail /></ProtectedRoute>} />
                     <Route path="/customer-insights" element={<ProtectedRoute><CustomerInsights /></ProtectedRoute>} />
                     <Route path="/customer-insights/history" element={<ProtectedRoute><CustomerInsightsHistory /></ProtectedRoute>} />
                     <Route path="/customer-insights/:analysisId" element={<ProtectedRoute><CustomerInsightsDetail /></ProtectedRoute>} />

@@ -84,6 +84,8 @@ async def list_ideas(
     - **min_score**: Minimum overall validation score (1.0-5.0)
     - **max_score**: Maximum overall validation score (1.0-5.0)
     """
+    from app.core.logging import logger
+    
     user_id = current_user.id
     
     filters = IdeaFilters(
@@ -94,7 +96,24 @@ async def list_ideas(
         max_score=max_score
     )
     
+    logger.info(f"Fetching ideas for user {user_id} with filters: {filters.dict()}")
+    
     ideas = IdeaManager.list_ideas(user_id, filters)
+    
+    logger.info(f"Returning {len(ideas)} ideas for user {user_id}")
+    
+    # Log validation status for debugging
+    for idea in ideas:
+        if idea.latest_validation:
+            logger.debug(
+                f"Idea '{idea.title}' has validation: "
+                f"id={idea.latest_validation.validation_id}, "
+                f"score={idea.latest_validation.overall_score}, "
+                f"status={idea.latest_validation.status}"
+            )
+        else:
+            logger.debug(f"Idea '{idea.title}' has no latest_validation populated (latest_validation_id={idea.latest_validation_id})")
+    
     return ideas
 
 
